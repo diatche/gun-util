@@ -3,10 +3,6 @@ import { createGun, TEST_GUN_OPTIONS } from '../src/gun';
 import { IGunChainReference } from 'gun/types/chain';
 import _ from 'lodash';
 
-interface ItemNode {
-    [id: string]: Item;
-}
-
 interface Item {
     name: string;
 }
