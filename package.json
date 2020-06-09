@@ -2,12 +2,14 @@
   "name": "gun-util",
   "version": "0.0.1",
   "description": "Convenience and utility methods for GunDB",
-  "main": "index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "type": "module",
   "scripts": {
     "test": "jest",
     "coverage": "jest --coverage",
-    "gun": "cd node_modules/gun && npm start"
+    "gun": "cd node_modules/gun && npm start",
+    "prepare": "tsc"
   },
   "author": "Pavel Diatchenko <diatche@gmail.com>",
   "license": "MIT",
