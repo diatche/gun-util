@@ -11,7 +11,21 @@
     "gun": "cd node_modules/gun && npm start",
     "prepare": "tsc"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/diatche/gun-util.git"
+  },
   "author": "Pavel Diatchenko <diatche@gmail.com>",
+  "keywords": [
+    "gun",
+    "gundb",
+    "gunjs",
+    "gun.js",
+    "util",
+    "utils",
+    "utility",
+    "utilities"
+  ],
   "license": "MIT",
   "dependencies": {
     "gun": "^0.2020.520"
