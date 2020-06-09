@@ -1,7 +1,8 @@
 import { iterate } from '../src/iterate';
-import { createGun, TEST_GUN_OPTIONS } from '../src/gun';
+import { TEST_GUN_OPTIONS } from '../src/gun';
 import { IGunChainReference } from 'gun/types/chain';
 import _ from 'lodash';
+import Gun from 'gun';
 
 interface Item {
     name: string;
@@ -17,7 +18,7 @@ let gun: IGunChainReference<State>;
 describe('iterate', () => {
 
     beforeAll(() => {
-        gun = createGun<State>(TEST_GUN_OPTIONS);
+        gun = Gun<State>(TEST_GUN_OPTIONS);
     });
 
     afterAll(() => {
