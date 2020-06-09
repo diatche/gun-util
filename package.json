@@ -1,0 +1,27 @@
+{
+  "name": "gun-util",
+  "version": "0.0.1",
+  "description": "Convenience and utility methods for GunDB",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "test": "jest",
+    "coverage": "jest --coverage",
+    "gun": "cd node_modules/gun && npm start",
+    "prepare": "tsc"
+  },
+  "author": "Pavel Diatchenko <diatche@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "gun": "^0.2020.520"
+  },
+  "devDependencies": {
+    "@types/jest": "^25.2.3",
+    "@types/lodash": "^4.14.155",
+    "jest": "^26.0.1",
+    "lodash": "^4.17.15",
+    "ts-jest": "^26.1.0",
+    "typescript": "^3.9.3"
+  }
+}
