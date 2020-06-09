@@ -1,6 +1,8 @@
 import Gun from 'gun';
 import { IGunConstructorOptions } from 'gun/types/options';
 
+require('gun/lib/then');
+
 const DEFAULT_PORT = 8765;
 
 const localPort = process.env.GUN_PORT || DEFAULT_PORT;

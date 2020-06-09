@@ -1,7 +1,8 @@
 import { IGunChainReference } from "gun/types/chain";
+import { GunError } from "./errors";
 
 /** Iterate over records once. */
-export async function * iterate<T>(ref: IGunChainReference<T[]>): AsyncGenerator<T> {
+export async function * iterate<T = any>(ref: IGunChainReference<T[]>): AsyncGenerator<T> {
     let isDone = false;
     let error: any;
     let batch: T[] = [];
@@ -15,11 +16,14 @@ export async function * iterate<T>(ref: IGunChainReference<T[]>): AsyncGenerator
         nextBatchReady = undefined;
     }
 
-    let stream = ref.once().map().once((value, id) => {
-        batch.push(value as T);
+    let stream = ref.map().once((value, id) => {
+        batch.push(value as any);
         _resolve();
     });
 
+    if (!stream.then) {
+        throw new GunError('gun.then() method missing');
+    }
     stream.then?.().then(value => {
         isDone = true;
         _resolve();
