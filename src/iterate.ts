@@ -1,4 +1,5 @@
 import { IGunChainReference } from "gun/types/chain";
+import { gunLogOnceFix } from "./temp";
 
 require('gun/lib/then');
 
@@ -6,6 +7,7 @@ require('gun/lib/then');
 export async function * iterate<T = any>(ref: IGunChainReference<T[] | Record<any, T>>): AsyncGenerator<T> {
     // Get list of refs
     // TODO: possibly filter list using GUN's lexical wire spec: https://gun.eco/docs/RAD
+    gunLogOnceFix();
     let ids = Object.keys(await ref.once().then!());
     let find_ = true;
     let record: T;
