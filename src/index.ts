@@ -7,6 +7,7 @@ export * from './encryption';
 export * from './errors';
 export * from './filter';
 export * from './iterate';
+export * from './peers';
 export * from './support';
 export * from './temp';
 export * from './types';
