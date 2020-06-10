@@ -1,7 +1,8 @@
 import GunUser from '../src/user';
 import { IGunChainReference } from 'gun/types/chain';
-import { createGun, TEST_GUN_OPTIONS } from '../src/gun';
+import { TEST_GUN_OPTIONS } from '../src/gun';
 import { InvalidCredentials, UserExists, AuthError } from '../src/errors';
+import Gun from 'gun';
 
 let gun: IGunChainReference;
 const creds = { alias: 'foo', pass: 'bar' };
@@ -10,7 +11,7 @@ describe('User', () => {
     jest.setTimeout(20000);
 
     beforeAll(() => {
-        gun = createGun(TEST_GUN_OPTIONS);
+        gun = Gun(TEST_GUN_OPTIONS);
     });
 
     afterEach(() => {
