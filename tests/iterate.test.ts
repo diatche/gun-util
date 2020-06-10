@@ -62,7 +62,7 @@ describe('iterate', () => {
         let expectedItems: Item[] = [];
         for (let name of names) {
             let item = { name };
-            let itemRef = (gun.get(name) as IGunChainReference<Item>).put(item);
+            let itemRef = gun.get(name).put(item as never);
             expectedItems.push(item);
             itemsRef.set(itemRef as any);
         }
