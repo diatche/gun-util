@@ -19,7 +19,6 @@ describe('User', () => {
     })
 
     afterAll(() => {
-        gun.off();
         (gun as any) = undefined;
     });
 

@@ -36,7 +36,6 @@ describe('iterate', () => {
     });
 
     afterAll(() => {
-        gun.off();
         (gun as any) = undefined;
     });
 

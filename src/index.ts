@@ -1,3 +1,5 @@
+export * from './DateGraph';
+export { default as DateGraph } from './DateGraph';
 export * from './errors';
 export * from './const';
 export * from './iterate';
