@@ -1,7 +1,7 @@
 import { IGunChainReference } from "gun/types/chain";
 import { TEST_GUN_OPTIONS } from "../src/gun";
 import Gun from "gun";
-import { DateGraph, DateComponents } from "../src";
+import { DateGraph, DateComponents, iterateKeys } from "../src";
 import { gunLogOnceFix } from "../src/temp";
 import moment from "moment";
 import _ from "lodash";
@@ -57,11 +57,6 @@ describe('DateGraph #', () => {
         dateGraph = new DateGraph(dateGraphRoot, 'day');
     });
 
-    // afterEach(async () => {
-    //     // Reset graph
-    //     await dateGraphRoot.put(null as never).then!();
-    // });
-
     afterAll(() => {
         (gun as any) = undefined;
     });
@@ -79,9 +74,9 @@ describe('DateGraph #', () => {
         });
     });
 
-    describe('iterateRefs', () => {
+    describe('iterate', () => {
 
-        let data = {
+        let data: { [date: string]: string } = {
             '2010-10-20': '-',
             '2010-11-30': 'a',
             '2010-12-05': 'b',
@@ -102,20 +97,84 @@ describe('DateGraph #', () => {
         });
 
         it('should iterate over refs in date range', async () => {
-            let dates: string[] = [];
-            let it = dateGraph.iterateRefs({
+            let refTable: any = {};
+            let it = dateGraph.iterate({
                 start: moment.utc('2010-11-30'),
                 end: moment.utc('2011-01-04'),
             });
             for await (let [ref, date] of it) {
-                dates.push(date.format('YYYY-MM-DD'));
+                refTable[date.format('YYYY-MM-DD')] = ref;
             }
-            dates = dates.sort();
+
+            // Check dates
+            let dates = Object.keys(refTable).sort();
             let expectedData = _.omit(data, [
                 '2010-10-20',
                 '2011-01-04',
             ]);
             expect(dates).toEqual(Object.keys(expectedData));
+
+            // Check refs
+            for (let date of dates) {
+                let value = await refTable[date].then!();
+                expect(value).toBe(data[date]);
+            }
+        });
+    });
+
+    describe('next', () => {
+
+        let data = {
+            '2010-10-20': '-',
+            '2012-10-20': '+',
+            '2012-11-30': 'a',
+            '2012-12-05': 'b',
+            '2012-12-07': 'c',
+        }
+
+        beforeAll(async () => {
+            // Add data to graph
+            let promises: any[] = [];
+            _.forIn(data, (value, dateStr) => {
+                let date = moment.utc(dateStr);
+                let ref = dateGraph.getRef(date).put(value as never);
+                promises.push(ref.then!());
+            });
+            await Promise.all(promises);
+        });
+
+        it('should return the first ref without a date', async () => {
+            let [nextRef, nextDate] = await dateGraph.next();
+            expect(nextRef).toBeTruthy();
+            expect(nextDate?.format('YYYY-MM-DD')).toBe('2010-10-20');
+        });
+
+        it('should return the first ref with a date lower than the first date', async () => {
+            let date = moment.utc('2010-10-19');
+            let [nextRef, nextDate] = await dateGraph.next(date);
+            expect(nextRef).toBeTruthy();
+            expect(nextDate?.format('YYYY-MM-DD')).toBe('2010-10-20');
+        });
+
+        it('should return the next ref with a date', async () => {
+            let date = moment.utc('2012-10-20');
+            let [nextRef, nextDate] = await dateGraph.next(date);
+            expect(nextRef).toBeTruthy();
+            expect(nextDate?.format('YYYY-MM-DD')).toBe('2012-11-30');
+        });
+
+        it('should return nothing at the end date', async () => {
+            let date = moment.utc('2012-12-07');
+            let [nextRef, nextDate] = await dateGraph.next(date);
+            expect(nextRef).toBeFalsy();
+            expect(nextDate).toBeFalsy();
+        });
+
+        it('should return nothing after the end date', async () => {
+            let date = moment.utc('2012-12-08');
+            let [nextRef, nextDate] = await dateGraph.next(date);
+            expect(nextRef).toBeFalsy();
+            expect(nextDate).toBeFalsy();
         });
     });
 });

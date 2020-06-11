@@ -50,7 +50,67 @@ export default class DateGraph<T = any> {
         return floor;
     }
 
-    async * iterateRefs({ start, end }: { start?: Moment; end?: Moment; } = {}): AsyncGenerator<[IGunChainReference, Moment]> {
+    /**
+     * Puts the value at the date and returns
+     * it's reference.
+     */
+    put(date: Moment, value: T): IGunChainReference<T> {
+        let ref = this.getRef(date);
+        ref.put(value);
+        return ref;
+    }
+
+    /**
+     * Gets the Gun node reference for a particular date
+     * up to the receiver's maximum resolution. If none
+     * exists, it is created.
+     * @param date
+     * @returns A Gun node reference
+     */
+    getRef(date: Moment): IGunChainReference<T> {
+        let comps = DateGraph.getDateComponents(date, this.resolution) as DateComponentsUnsafe;
+        let ref = this.root;
+        Object.values(comps).forEach(resValue => {
+            ref = ref.get(resValue.toString());
+        });
+        return ref as IGunChainReference<T>;
+    }
+
+    /**
+     * Gets the next Gun node reference for a particular date
+     * if one exists. If no date is specified, returns the
+     * first node reference.
+     * @param date
+     * @returns A Gun node reference
+     */
+    async next(date?: Moment): Promise<[IGunChainReference<T> | undefined, Moment | undefined]> {
+        let it = this.iterate({ start: date });
+        for await (let [ref, refDate] of it) {
+            if (date) {
+                if (refDate.isSame(date)) {
+                    continue;
+                } else if (refDate.isBefore(date)) {
+                    throw new Error('Unexpected date');
+                }
+            }
+            return [ref, refDate];
+        }
+        return [undefined, undefined];
+    }
+
+    /**
+     * Iterates over all node references after and
+     * inclusing `start` date and before and excluding
+     * `end` date.
+     * @param param0 
+     */
+    async * iterate({
+        start,
+        end
+    }: {
+        start?: Moment;
+        end?: Moment;
+    } = {}): AsyncGenerator<[IGunChainReference<T>, Moment]> {
         let ref: IGunChainReference | undefined = this.root;
         let startComps = (start && DateGraph.getDateComponents(start, this.resolution) || {}) as Partial<DateComponentsUnsafe>;
         let endComps = (end && DateGraph.getDateComponents(end, this.resolution) || {}) as Partial<DateComponentsUnsafe>;
@@ -59,8 +119,8 @@ export default class DateGraph<T = any> {
         let ress = this._allResolutions();
         let resIndex = 0;
         let resLen = ress.length;
-        let it: AsyncGenerator<[IGunChainReference, number]> | undefined;
-        let itStack: AsyncGenerator<[IGunChainReference, number]>[] = [];
+        let it: AsyncGenerator<[IGunChainReference<T>, number]> | undefined;
+        let itStack: AsyncGenerator<[IGunChainReference<T>, number]>[] = [];
         let startVal: number | undefined;
         let endVal: number | undefined;
         let goUp = false;
@@ -143,7 +203,7 @@ export default class DateGraph<T = any> {
         ref: IGunChainReference,
         start?: number,
         end?: number
-    ): AsyncGenerator<[IGunChainReference, number]> {
+    ): AsyncGenerator<[IGunChainReference<T>, number]> {
         let checkStart = typeof start !== 'undefined';
         let checkEnd = typeof end !== 'undefined';
         if (checkStart && checkEnd) {
@@ -162,31 +222,6 @@ export default class DateGraph<T = any> {
                 yield [innerRef, compVal];
             }
         }
-    }
-
-    /**
-     * Puts the value at the date and returns
-     * it's reference.
-     */
-    put(date: Moment, value: T): IGunChainReference<T> {
-        let ref = this.getRef(date);
-        ref.put(value);
-        return ref;
-    }
-
-    /**
-     * Gets the Gun node reference for a particular date
-     * up to the receiver's maximum resolution.
-     * @param date
-     * @returns A Gun node reference
-     */
-    getRef(date: Moment): IGunChainReference<T> {
-        let comps = DateGraph.getDateComponents(date, this.resolution) as DateComponentsUnsafe;
-        let ref = this.root;
-        Object.values(comps).forEach(resValue => {
-            ref = ref.get(resValue.toString());
-        });
-        return ref as IGunChainReference<T>;
     }
 
     private _allResolutions(): DateResolution[] {
@@ -245,16 +280,6 @@ export default class DateGraph<T = any> {
     static getDateComponent(date: Moment, resolution: DateResolution): number {
         let val = date.get(nativeDateUnit(resolution));
         return graphDateValue(val, resolution);
-        // switch (resolution) {
-        //     case 'year': return date.getUTCFullYear();
-        //     case 'month': return date.getUTCMonth() + 1;
-        //     case 'day': return date.getUTCDate();
-        //     case 'hour': return date.getUTCHours();
-        //     case 'minute': return date.getUTCMinutes();
-        //     case 'second': return date.getUTCSeconds();
-        //     case 'millisecond': return date.getUTCMilliseconds();
-        // }
-        // throw new Error('Unsupported date component: ' + resolution);
     }
 
     static trimDateComponents(components: DateComponents, resolution: DateResolution): DateComponents {
