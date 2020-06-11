@@ -1,12 +1,19 @@
 import { IGunChainReference } from "gun/types/chain";
 
+export interface IterateOptions {
+    reverse?: boolean;
+}
+
 /**
  * Iterate over the inner keys of a record at a Gun node reference.
  * @param ref Gun node reference
  **/
 export async function * iterateKeys<
     K extends string | number | symbol = string
->(ref: IGunChainReference<Record<K, any>>): AsyncGenerator<K> {
+>(
+    ref: IGunChainReference<Record<K, any>>,
+    opts?: IterateOptions,
+): AsyncGenerator<K> {
     // Get list of keys
     // TODO: possibly filter list using GUN's lexical wire spec: https://gun.eco/docs/RAD
     let obj = await ref.once().then!();
@@ -15,12 +22,23 @@ export async function * iterateKeys<
     }
     let keys = Object.keys(obj);
     let find_ = true;
-    for (let key of keys) {
-        if (find_ && key === '_') {
-            find_ = false;
-            continue;
+    if (!opts?.reverse) {
+        for (let key of keys) {
+            if (find_ && key === '_') {
+                find_ = false;
+                continue;
+            }
+            yield key as K;
         }
-        yield key as K;
+    } else {
+        for (let i = keys.length - 1; i >= 0; i--) {
+            let key = keys[i];
+            if (find_ && key === '_') {
+                find_ = false;
+                continue;
+            }
+            yield key as K;
+        }
     }
 }
 
@@ -29,10 +47,13 @@ export async function * iterateKeys<
  * the inner reference and its key.
  * @param ref Gun node reference
  **/
-export async function * iterateRefs<T = any>(ref: IGunChainReference<T[] | Record<any, T>>): AsyncGenerator<[IGunChainReference<T>, string]> {
+export async function * iterateRefs<T = any>(
+    ref: IGunChainReference<T[] | Record<any, T>>,
+    opts?: IterateOptions,
+): AsyncGenerator<[IGunChainReference<T>, string]> {
     gunLogOnceFix();
     let innerRef: IGunChainReference<T>;
-    for await (let key of iterateKeys(ref)) {
+    for await (let key of iterateKeys(ref, opts)) {
         innerRef = ref.get(key as any);
         yield [innerRef, key];
     }
@@ -43,10 +64,13 @@ export async function * iterateRefs<T = any>(ref: IGunChainReference<T[] | Recor
  * the inner record and its key.
  * @param ref Gun node reference
  **/
-export async function * iterateItems<T = any>(ref: IGunChainReference<T[] | Record<any, T>>): AsyncGenerator<[T, string]> {
+export async function * iterateItems<T = any>(
+    ref: IGunChainReference<T[] | Record<any, T>>,
+    opts?: IterateOptions,
+): AsyncGenerator<[T, string]> {
     gunLogOnceFix();
     let record: T;
-    for await (let [innerRef, key] of iterateRefs(ref)) {
+    for await (let [innerRef, key] of iterateRefs(ref, opts)) {
         record = await innerRef.then!();
         yield [record, key];
     }
@@ -57,13 +81,19 @@ export async function * iterateItems<T = any>(ref: IGunChainReference<T[] | Reco
  * the inner record.
  * @param ref Gun node reference
  **/
-export async function * iterateValues<T = any>(ref: IGunChainReference<T[] | Record<any, T>>): AsyncGenerator<T> {
-    for await (let [v] of iterateItems(ref)) {
+export async function * iterateValues<T = any>(
+    ref: IGunChainReference<T[] | Record<any, T>>,
+    opts?: IterateOptions,
+): AsyncGenerator<T> {
+    for await (let [v] of iterateItems(ref, opts)) {
         yield v;
     }
 }
 
 /** Iterate over records once. */
-export function iterate<T = any>(ref: IGunChainReference<T[] | Record<any, T>>): AsyncGenerator<T> {
-    return iterateValues(ref);
+export function iterate<T = any>(
+    ref: IGunChainReference<T[] | Record<any, T>>,
+    opts?: IterateOptions,
+): AsyncGenerator<T> {
+    return iterateValues(ref, opts);
 }

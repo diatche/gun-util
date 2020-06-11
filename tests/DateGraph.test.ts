@@ -76,13 +76,14 @@ describe('DateGraph #', () => {
 
     describe('iterate', () => {
 
+        // The data is in descending order intentionally
         let data: { [date: string]: string } = {
-            '2010-10-20': '-',
-            '2010-11-30': 'a',
-            '2010-12-05': 'b',
-            '2010-12-07': 'c',
-            '2011-01-03': 'd',
             '2011-01-04': '-',
+            '2011-01-03': 'd',
+            '2010-12-07': 'c',
+            '2010-12-05': 'b',
+            '2010-11-30': 'a',
+            '2010-10-20': '-',
         }
 
         beforeAll(async () => {
@@ -106,13 +107,13 @@ describe('DateGraph #', () => {
                 refTable[date.format('YYYY-MM-DD')] = ref;
             }
 
-            // Check dates
-            let dates = Object.keys(refTable).sort();
+            // Check dates in ascending order
+            let dates = Object.keys(refTable);
             let expectedData = _.omit(data, [
                 '2010-10-20',
                 '2011-01-04',
             ]);
-            expect(dates).toEqual(Object.keys(expectedData));
+            expect(dates).toEqual(Object.keys(expectedData).sort());
 
             // Check refs
             for (let date of dates) {
