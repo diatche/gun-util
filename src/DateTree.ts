@@ -10,6 +10,8 @@ export const ALL_DATE_UNITS: DateUnit[] = [
     'year',  'month',  'day',  'hour',  'minute',  'second', 'millisecond',
 ];
 
+export type DateParsable = Moment | Date | string | number;
+
 const ZERO_DATE = moment.utc().startOf('year').set('year', 1);
 
 type DateComponentsUnsafe = { [res: string]: number };
@@ -24,8 +26,8 @@ export type DateComponents = {
 }
 
 export type DateIterateOptions = Omit<IterateOptions, 'start' | 'end'> & {
-    start?: Moment;
-    end?: Moment;
+    start?: DateParsable;
+    end?: DateParsable;
 };
 
 /**
@@ -43,14 +45,14 @@ export default class DateTree<T = any> {
         this.resolution = resolution;
     }
 
-    nextDate(date: Moment): Moment {
+    nextDate(date: DateParsable): Moment {
         let m = moment(date);
         let floor = m.startOf(this.resolution);
         let next = floor.add(1, this.resolution);
         return next;
     }
 
-    previousDate(date: Moment): Moment {
+    previousDate(date: DateParsable): Moment {
         let m = moment(date);
         let floor = m.startOf(this.resolution);
         if (floor.isSame(m)) {
@@ -63,7 +65,7 @@ export default class DateTree<T = any> {
      * Puts the value at the date and returns
      * it's reference.
      */
-    put(date: Moment, value: T, callback?: AckCallback): IGunChainReference<T> {
+    put(date: DateParsable, value: T, callback?: AckCallback): IGunChainReference<T> {
         let ref = this.get(date);
         ref.put(value, callback);
         return ref;
@@ -74,10 +76,11 @@ export default class DateTree<T = any> {
      * @param date 
      * @returns An unsubscribe function
      */
-    changesAbout(date: Moment, callback: (comps: DateComponents) => void): () => void {
-        let comps = DateTree.getDateComponents(date, this.resolution);
+    changesAbout(date: DateParsable, callback: (comps: DateComponents) => void): () => void {
+        let m = moment(date);
+        let comps = DateTree.getDateComponents(m, this.resolution);
         let units = Object.keys(comps);
-        let refs = this._getRefChain(date);
+        let refs = this._getRefChain(m);
         let refTable = _.zipObject(units, refs);
         let eventsTable: { [unit: string]: IGunChainReference } = {};
 
@@ -131,8 +134,8 @@ export default class DateTree<T = any> {
      * @param date
      * @returns A Gun node reference
      */
-    get(date: Moment): IGunChainReference<T> {
-        let chain = this._getRefChain(date);
+    get(date: DateParsable): IGunChainReference<T> {
+        let chain = this._getRefChain(moment(date));
         return chain[chain.length - 1] as any;
     }
 
@@ -155,9 +158,9 @@ export default class DateTree<T = any> {
      * @param date
      * @returns A Gun node reference
      */
-    async next(date?: Moment): Promise<[IGunChainReference<T> | undefined, Moment | undefined]> {
+    async next(date?: DateParsable): Promise<[IGunChainReference<T> | undefined, Moment | undefined]> {
         let it = this.iterate({
-            start: date,
+            start: date && moment(date) || undefined,
             startInclusive: false,
             endInclusive: true,
         });
@@ -183,7 +186,7 @@ export default class DateTree<T = any> {
      */
     async previous(date?: Moment): Promise<[IGunChainReference<T> | undefined, Moment | undefined]> {
         let it = this.iterate({
-            end: date,
+            end: date && moment(date) || undefined,
             startInclusive: true,
             endInclusive: false,
             reverse: true,
@@ -340,16 +343,14 @@ export default class DateTree<T = any> {
         return m;
     }
 
-    static getDateComponents(date: Moment, resolution: DateUnit): DateComponents {
-        if (!this.isDate(date)) {
-            throw new Error(`Invalid graph date. Expected a Moment, instead got: ${date}`);
-        }
+    static getDateComponents(date: DateParsable, resolution: DateUnit): DateComponents {
+        let m = moment(date);
         if (!this.isResolution(resolution)) {
             throw new Error('Invalid graph date resolution: ' + resolution);
         }
         let comps: any = {};
         for (let res of ALL_DATE_UNITS) {
-            comps[res] = this.getDateComponent(date, res as DateUnit);
+            comps[res] = this.getDateComponent(m, res as DateUnit);
             if (res === resolution) {
                 break;
             }
@@ -357,8 +358,9 @@ export default class DateTree<T = any> {
         return comps;
     }
 
-    static getDateComponent(date: Moment, unit: DateUnit): number {
-        let val = date.get(nativeDateUnit(unit));
+    static getDateComponent(date: DateParsable, unit: DateUnit): number {
+        let m = moment(date);
+        let val = m.get(nativeDateUnit(unit));
         return graphDateValue(val, unit);
     }
 
@@ -442,7 +444,7 @@ export default class DateTree<T = any> {
      * @param start Start date (inclusive)
      * @param end End date (exclusive)
      */
-    static * iterateDates(start: Moment, end: Moment, resolution: DateUnit): Generator<Moment> {
+    static * iterateDates(start: DateParsable, end: DateParsable, resolution: DateUnit): Generator<Moment> {
         let mStart = moment(start).startOf(resolution);
         let mEnd = moment(end).startOf(resolution);
         let date = mStart;
@@ -450,10 +452,6 @@ export default class DateTree<T = any> {
             yield date;
             date = date.add(resolution);
         }
-    }
-
-    static isDate(date: any): date is Moment {
-        return moment.isMoment(date);
     }
 
     static isResolution(resolution: any): resolution is DateUnit {
