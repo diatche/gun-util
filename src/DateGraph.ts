@@ -3,11 +3,9 @@ import _ from 'lodash';
 import moment, { Moment } from 'moment';
 import { IterateOptions, iterateKeys } from "./iterate";
 
-// TODO: pad date components with zeros for lex sort
+export type DateUnit = 'year' | 'month' | 'day' | 'hour' | 'minute' | 'second' | 'millisecond';
 
-export type DateResolution = 'year' | 'month' | 'day' | 'hour' | 'minute' | 'second' | 'millisecond';
-
-const ALL_RES: DateResolution[] = [
+export const ALL_DATE_UNITS: DateUnit[] = [
     'year',  'month',  'day',  'hour',  'minute',  'second', 'millisecond',
 ];
 
@@ -21,7 +19,7 @@ type DateComponentsUnsafe = { [res: string]: number };
  * January.
  */
 export type DateComponents = {
-    [K in DateResolution]?: number;
+    [K in DateUnit]?: number;
 }
 
 export type DateIterateOptions = Omit<IterateOptions, 'start' | 'end'> & {
@@ -31,9 +29,9 @@ export type DateIterateOptions = Omit<IterateOptions, 'start' | 'end'> & {
 
 export default class DateGraph<T = any> {
     root: IGunChainReference;
-    resolution: DateResolution;
+    resolution: DateUnit;
 
-    constructor(root: IGunChainReference, resolution: DateResolution) {
+    constructor(root: IGunChainReference, resolution: DateUnit) {
         if (!DateGraph.isResolution(resolution)) {
             throw new Error('Invalid graph date resolution: ' + resolution);
         }
@@ -75,10 +73,11 @@ export default class DateGraph<T = any> {
      * @returns A Gun node reference
      */
     getRef(date: Moment): IGunChainReference<T> {
-        let comps = DateGraph.getDateComponents(date, this.resolution) as DateComponentsUnsafe;
+        let comps = DateGraph.getDateComponents(date, this.resolution);
         let ref = this.root;
-        Object.values(comps).forEach(resValue => {
-            ref = ref.get(resValue.toString());
+        _.forIn(comps, (val, unit) => {
+            let key = DateGraph.encodeDateComponent(val, unit as DateUnit)!;
+            ref = ref.get(key);
         });
         return ref as IGunChainReference<T>;
     }
@@ -121,10 +120,10 @@ export default class DateGraph<T = any> {
         let startComps = (start && DateGraph.getDateComponents(start, this.resolution) || {}) as Partial<DateComponentsUnsafe>;
         let endComps = (end && DateGraph.getDateComponents(end, this.resolution) || {}) as Partial<DateComponentsUnsafe>;
         let comps: DateComponentsUnsafe = {};
-        let res: string;
-        let ress = this._allResolutions();
+        let unit: DateUnit;
+        let units = this._allUnits();
         let resIndex = 0;
-        let resLen = ress.length;
+        let resLen = units.length;
         let it: AsyncGenerator<[IGunChainReference<T>, number]> | undefined;
         let itStack: AsyncGenerator<[IGunChainReference<T>, number]>[] = [];
         let startVal: number | undefined;
@@ -133,22 +132,22 @@ export default class DateGraph<T = any> {
 
         while (resIndex >= 0) {
             goUp = false;
-            res = ress[resIndex];
-            startVal = startComps[res];
-            endVal = endComps[res];
+            unit = units[resIndex];
+            startVal = startComps[unit];
+            endVal = endComps[unit];
             if (typeof endVal !== 'undefined') {
                 if (resIndex < resLen - 1) {
                     endVal += 1;
                 }
                 if (resIndex > 0) {
-                    let upRes = ress[resIndex - 1];
-                    let upComps = DateGraph.trimDateComponents(comps, upRes);
-                    let upStartComps = DateGraph.trimDateComponents(startComps, upRes);
+                    let upUnit = units[resIndex - 1];
+                    let upComps = DateGraph.trimDateComponents(comps, upUnit);
+                    let upStartComps = DateGraph.trimDateComponents(startComps, upUnit);
                     if (!_.isEqual(upStartComps, upComps)) {
                         // Expand start
                         startVal = undefined;
                     }
-                    let upEndComps = DateGraph.trimDateComponents(endComps, upRes);
+                    let upEndComps = DateGraph.trimDateComponents(endComps, upUnit);
                     if (!_.isEqual(upEndComps, upComps)) {
                         // Expand end
                         endVal = undefined;
@@ -159,8 +158,8 @@ export default class DateGraph<T = any> {
                 // Queue another node for iteration
                 it = this._iterateRef(ref, {
                     ...otherOpts,
-                    start: startVal?.toString(), 
-                    end: endVal?.toString(),
+                    start: DateGraph.encodeDateComponent(startVal, unit), 
+                    end: DateGraph.encodeDateComponent(endVal, unit),
                 });
                 itStack.unshift(it);
                 ref = undefined;
@@ -169,7 +168,7 @@ export default class DateGraph<T = any> {
             if (it && resIndex === resLen - 1) {
                 // Found data
                 for await (let [innerRef, compVal] of it) {
-                    comps[res] = compVal;
+                    comps[unit] = compVal;
                     let date = DateGraph.getDateWithComponents(
                         comps,
                         this.resolution
@@ -188,15 +187,15 @@ export default class DateGraph<T = any> {
                 } else {
                     // Go down a level
                     ref = next.value[0];
-                    comps[res] = next.value[1];
+                    comps[unit] = next.value[1];
                     resIndex += 1;
                 }
             }
             if (goUp) {
                 itStack.shift();
                 resIndex -= 1;
-                if (res in comps) {
-                    delete comps[res];
+                if (unit in comps) {
+                    delete comps[unit];
                 }
                 continue;
             }
@@ -220,29 +219,29 @@ export default class DateGraph<T = any> {
         }
     }
 
-    private _allResolutions(): DateResolution[] {
-        let ress: DateResolution[] = [];
-        for (let res of ALL_RES) {
-            ress.push(res);
+    private _allUnits(): DateUnit[] {
+        let units: DateUnit[] = [];
+        for (let res of ALL_DATE_UNITS) {
+            units.push(res);
             if (res === this.resolution) {
                 break;
             }
         }
-        return ress;
+        return units;
     }
 
-    static lowerResolution(resolution: DateResolution): DateResolution | undefined {
-        let i = ALL_RES.indexOf(resolution);
+    static lowerUnit(unit: DateUnit): DateUnit | undefined {
+        let i = ALL_DATE_UNITS.indexOf(unit);
         if (i < 0) {
             return undefined;
         }
-        return ALL_RES[i - 1];
+        return ALL_DATE_UNITS[i - 1];
     }
 
-    static getDateWithComponents(comps: DateComponents, resolution?: DateResolution): Moment {
+    static getDateWithComponents(comps: DateComponents, resolution?: DateUnit): Moment {
         let c = comps as DateComponentsUnsafe;
         let m = ZERO_DATE.clone();
-        for (let res of ALL_RES) {
+        for (let res of ALL_DATE_UNITS) {
             if (res in comps) {
                 let val = nativeDateValue(c[res], res);
                 m.set(nativeDateUnit(res), val);
@@ -256,7 +255,7 @@ export default class DateGraph<T = any> {
         return m;
     }
 
-    static getDateComponents(date: Moment, resolution: DateResolution): DateComponents {
+    static getDateComponents(date: Moment, resolution: DateUnit): DateComponents {
         if (!this.isDate(date)) {
             throw new Error(`Invalid graph date. Expected a Moment, instead got: ${date}`);
         }
@@ -264,8 +263,8 @@ export default class DateGraph<T = any> {
             throw new Error('Invalid graph date resolution: ' + resolution);
         }
         let comps: any = {};
-        for (let res of ALL_RES) {
-            comps[res] = this.getDateComponent(date, res as DateResolution);
+        for (let res of ALL_DATE_UNITS) {
+            comps[res] = this.getDateComponent(date, res as DateUnit);
             if (res === resolution) {
                 break;
             }
@@ -273,14 +272,24 @@ export default class DateGraph<T = any> {
         return comps;
     }
 
-    static getDateComponent(date: Moment, resolution: DateResolution): number {
-        let val = date.get(nativeDateUnit(resolution));
-        return graphDateValue(val, resolution);
+    static getDateComponent(date: Moment, unit: DateUnit): number {
+        let val = date.get(nativeDateUnit(unit));
+        return graphDateValue(val, unit);
     }
 
-    static trimDateComponents(components: DateComponents, resolution: DateResolution): DateComponents {
+    static encodeDateComponent(value: number | undefined, unit: DateUnit): string | undefined {
+        if (typeof value === 'undefined') {
+            return undefined;
+        }
+        // Pad number with zeroes for lexicographical ordering
+        let key = value.toString();
+        let padLen = DATE_COMP_PADS[unit];
+        return key.padStart(padLen, '0');
+    }
+
+    static trimDateComponents(components: DateComponents, resolution: DateUnit): DateComponents {
         let newComponents: DateComponentsUnsafe = {};
-        for (let res of ALL_RES) {
+        for (let res of ALL_DATE_UNITS) {
             newComponents[res] = (components as DateComponentsUnsafe)[res];
             if (res === resolution) {
                 break;
@@ -295,7 +304,7 @@ export default class DateGraph<T = any> {
      * @param start Start date (inclusive)
      * @param end End date (exclusive)
      */
-    static * iterateDates(start: Moment, end: Moment, resolution: DateResolution): Generator<Moment> {
+    static * iterateDates(start: Moment, end: Moment, resolution: DateUnit): Generator<Moment> {
         let mStart = moment(start).startOf(resolution);
         let mEnd = moment(end).startOf(resolution);
         let date = mStart;
@@ -309,27 +318,27 @@ export default class DateGraph<T = any> {
         return moment.isMoment(date);
     }
 
-    static isResolution(resolution: any): resolution is DateResolution {
+    static isResolution(resolution: any): resolution is DateUnit {
         if (typeof resolution !== 'string') return false;
-        return ALL_RES.indexOf(resolution as DateResolution) >= 0;
+        return ALL_DATE_UNITS.indexOf(resolution as DateUnit) >= 0;
     }
 }
 
-const nativeDateUnit = (res: DateResolution): moment.unitOfTime.All => {
+const nativeDateUnit = (res: DateUnit): moment.unitOfTime.All => {
     if (res === 'day') {
         return 'date';
     }
     return res;
 };
 
-const graphDateValue = (value: number, res: DateResolution): number => {
+const graphDateValue = (value: number, res: DateUnit): number => {
     if (res === 'month') {
         value += 1;
     }
     return value;
 };
 
-const nativeDateValue = (value: number, res: DateResolution): number => {
+const nativeDateValue = (value: number, res: DateUnit): number => {
     if (res === 'month') {
         value -= 1;
     }
@@ -338,6 +347,19 @@ const nativeDateValue = (value: number, res: DateResolution): number => {
 
 const MAX_DATE_COMPS: DateComponentsUnsafe = (() => {
     let maxDate = moment.utc().endOf('year');
-    let ress = _.without(ALL_RES, 'year');
-    return _.zipObject(ress, ress.map(r => graphDateValue(maxDate.get(nativeDateUnit(r)), r) + 1));
+    let units = _.without(ALL_DATE_UNITS, 'year');
+    return _.zipObject(units, units.map(r => graphDateValue(maxDate.get(nativeDateUnit(r)), r) + 1));
+})();
+
+const DATE_COMP_PADS = (() => {
+    let pads: { [unit: string]: number } = {
+        year: 4
+    };
+    for (let unit of ALL_DATE_UNITS) {
+        if (unit in MAX_DATE_COMPS) {
+            let max = MAX_DATE_COMPS[unit] - 1;
+            pads[unit] = max.toString().length;
+        }
+    }
+    return pads;
 })();

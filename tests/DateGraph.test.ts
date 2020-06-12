@@ -1,12 +1,14 @@
 import { IGunChainReference } from "gun/types/chain";
 import { TEST_GUN_OPTIONS } from "../src/gun";
 import Gun from "gun";
-import { DateGraph, DateComponents, iterateKeys } from "../src";
+import { DateGraph, DateComponents, iterateKeys, ALL_DATE_UNITS } from "../src";
 import { gunLogOnceFix } from "../src/temp";
 import moment from "moment";
 import _ from "lodash";
+import { v4 as uuidv4 } from 'uuid';
 
 let gun: IGunChainReference;
+let runId: string;
 
 describe('DateGraph', () => {
 
@@ -43,6 +45,19 @@ describe('DateGraph', () => {
             expect(date.toISOString()).toBe('1995-12-17T03:24:02.456Z');
         });
     });
+
+    describe('encodeDateComponent', () => {
+
+        it('should pad with zeroes', () => {
+            expect(DateGraph.encodeDateComponent(1, 'year')).toBe('0001');
+            expect(DateGraph.encodeDateComponent(1, 'month')).toBe('01');
+            expect(DateGraph.encodeDateComponent(1, 'day')).toBe('01');
+            expect(DateGraph.encodeDateComponent(1, 'hour')).toBe('01');
+            expect(DateGraph.encodeDateComponent(1, 'minute')).toBe('01');
+            expect(DateGraph.encodeDateComponent(1, 'second')).toBe('01');
+            expect(DateGraph.encodeDateComponent(1, 'millisecond')).toBe('001');
+        });
+    });
 });
 
 describe('DateGraph #', () => {
@@ -53,7 +68,12 @@ describe('DateGraph #', () => {
 
     beforeAll(async () => {
         gun = Gun(TEST_GUN_OPTIONS);
-        dateGraphRoot = gun.get('dg1');
+    });
+
+    beforeEach(() => {
+        // Use a clean node on every run
+        runId = uuidv4();
+        dateGraphRoot = gun.get(runId);
         dateGraph = new DateGraph(dateGraphRoot, 'day');
     });
 
@@ -67,9 +87,9 @@ describe('DateGraph #', () => {
             dateGraph.getRef(moment('2020-05-01')).put('test1' as never);
             dateGraph.getRef(moment('2021-01-03')).put('test2' as never);
             gunLogOnceFix();
-            let val1 = await dateGraphRoot.get('2020').get('5').get('1').then!();
+            let val1 = await dateGraphRoot.get('2020').get('05').get('01').then!();
             expect(val1).toBe('test1');
-            let val2 = await dateGraphRoot.get('2021').get('1').get('3').then!();
+            let val2 = await dateGraphRoot.get('2021').get('01').get('03').then!();
             expect(val2).toBe('test2');
         });
     });
@@ -86,7 +106,7 @@ describe('DateGraph #', () => {
             '2010-10-20': '-',
         }
 
-        beforeAll(async () => {
+        beforeEach(async () => {
             // Add data to graph
             let promises: any[] = [];
             _.forIn(data, (value, dateStr) => {
@@ -102,6 +122,8 @@ describe('DateGraph #', () => {
             let it = dateGraph.iterateItems({
                 start: moment.utc('2010-11-30'),
                 end: moment.utc('2011-01-04'),
+                startInclusive: true,
+                endInclusive: false,
             });
             for await (let [ref, date] of it) {
                 refTable[date.format('YYYY-MM-DD')] = ref;
@@ -133,7 +155,7 @@ describe('DateGraph #', () => {
             '2012-12-07': 'c',
         }
 
-        beforeAll(async () => {
+        beforeEach(async () => {
             // Add data to graph
             let promises: any[] = [];
             _.forIn(data, (value, dateStr) => {

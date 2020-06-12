@@ -64,7 +64,7 @@ describe('iterate #', () => {
         it('should iterate all keys once in natural direction', async () => {
             let stringsRef = runRef.get('strings');
             
-            let names = ['foo', 'bar', 'gaz'];
+            let names = ['bar', 'foo', 'gaz'];
             let expectedItems: string[] = [];
             for (let name of names) {
                 expectedItems.push(name);
@@ -125,7 +125,7 @@ describe('iterate #', () => {
             }
             let stringsRef = runRef.get('strings');
             
-            let names = ['foo', 'bar', 'gaz'];
+            let names = ['bar', 'foo', 'gaz'];
             let expectedItems: string[] = [];
             for (let name of names) {
                 expectedItems.unshift(name);
@@ -187,7 +187,7 @@ describe('iterate #', () => {
         it('should iterate all primitives once', async () => {
             let stringsRef = runRef.get('strings');
             
-            let names = ['foo', 'bar', 'gaz'];
+            let names = ['bar', 'foo', 'gaz'];
             let expectedItems: string[] = [];
             for (let name of names) {
                 let item = name + '1';
@@ -202,7 +202,7 @@ describe('iterate #', () => {
         it('should iterate all records once', async () => {
             let itemsRef = runRef.get('items');
             
-            let names = ['foo', 'bar', 'gaz'];
+            let names = ['bar', 'foo', 'gaz'];
             let expectedItems: Item[] = [];
             for (let name of names) {
                 let item = { name };
@@ -221,7 +221,7 @@ describe('iterate #', () => {
     
             let itemsRef = userRef.get('privateItems');
             
-            let names = ['foo', 'bar', 'gaz'];
+            let names = ['bar', 'foo', 'gaz'];
             let expectedItems: Item[] = [];
             for (let name of names) {
                 let item = { name };
