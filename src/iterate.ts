@@ -52,15 +52,17 @@ export async function * iterateKeys(
     // TODO: To avoid fetching too much data at once,
     // use GUN's lexical wire spec to filter and or batch: https://gun.eco/docs/RAD
 
-    // Get list of keys
+    // Get list of keys:
     let obj: any = await ref.then!();
+    // Note that keys are not guaranteed to be in order if there is more
+    // than one connected peer.
     if (typeof obj !== 'object') {
         throw new Error(`Cannot iterate keys of non-object record "${obj}`);
     }
     // Remove meta
     obj = _.omit(obj, '_');
     
-    let keys = Object.keys(obj);
+    let keys = Object.keys(obj).sort();
     if (!reverse) {
         // Natural direction
         for (let key of keys) {
