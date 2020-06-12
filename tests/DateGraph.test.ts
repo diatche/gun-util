@@ -142,11 +142,11 @@ describe('DateTree #', () => {
         });
     });
 
-    describe('getRef', () => {
+    describe('get', () => {
 
         it('should return the correct node', async () => {
-            DateTree.getRef(moment('2020-05-01')).put('test1' as never);
-            DateTree.getRef(moment('2021-01-03')).put('test2' as never);
+            DateTree.get(moment('2020-05-01')).put('test1' as never);
+            DateTree.get(moment('2021-01-03')).put('test2' as never);
             gunLogOnceFix();
             let val1 = await DateTreeRoot.get('2020').get('05').get('01').then!();
             expect(val1).toBe('test1');
@@ -155,7 +155,7 @@ describe('DateTree #', () => {
         });
     });
 
-    describe('iterateRefs', () => {
+    describe('iterate', () => {
 
         // The data is in descending order intentionally
         let data: { [date: string]: string } = {
@@ -172,7 +172,7 @@ describe('DateTree #', () => {
             let promises: any[] = [];
             _.forIn(data, (value, dateStr) => {
                 let date = moment.utc(dateStr);
-                let ref = DateTree.getRef(date).put(value as never);
+                let ref = DateTree.get(date).put(value as never);
                 promises.push(ref.then!());
             });
             await Promise.all(promises);
@@ -180,7 +180,7 @@ describe('DateTree #', () => {
 
         it('should iterate over refs in date range', async () => {
             let refTable: any = {};
-            let it = DateTree.iterateRefs({
+            let it = DateTree.iterate({
                 start: moment.utc('2010-11-30'),
                 end: moment.utc('2011-01-04'),
                 startInclusive: true,
@@ -206,7 +206,7 @@ describe('DateTree #', () => {
         });
     });
 
-    describe('nextRef', () => {
+    describe('next', () => {
 
         let data = {
             '2010-10-20': '-',
@@ -221,48 +221,48 @@ describe('DateTree #', () => {
             let promises: any[] = [];
             _.forIn(data, (value, dateStr) => {
                 let date = moment.utc(dateStr);
-                let ref = DateTree.getRef(date).put(value as never);
+                let ref = DateTree.get(date).put(value as never);
                 promises.push(ref.then!());
             });
             await Promise.all(promises);
         });
 
         it('should return the first ref without a date', async () => {
-            let [nextRef, nextDate] = await DateTree.nextRef();
-            expect(nextRef).toBeTruthy();
+            let [next, nextDate] = await DateTree.next();
+            expect(next).toBeTruthy();
             expect(nextDate?.format('YYYY-MM-DD')).toBe('2010-10-20');
         });
 
         it('should return the first ref with a date lower than the first date', async () => {
             let date = moment.utc('2010-10-19');
-            let [nextRef, nextDate] = await DateTree.nextRef(date);
-            expect(nextRef).toBeTruthy();
+            let [next, nextDate] = await DateTree.next(date);
+            expect(next).toBeTruthy();
             expect(nextDate?.format('YYYY-MM-DD')).toBe('2010-10-20');
         });
 
         it('should return the next ref with a date', async () => {
             let date = moment.utc('2012-10-20');
-            let [nextRef, nextDate] = await DateTree.nextRef(date);
-            expect(nextRef).toBeTruthy();
+            let [next, nextDate] = await DateTree.next(date);
+            expect(next).toBeTruthy();
             expect(nextDate?.format('YYYY-MM-DD')).toBe('2012-11-30');
         });
 
         it('should return nothing at the end date', async () => {
             let date = moment.utc('2012-12-07');
-            let [nextRef, nextDate] = await DateTree.nextRef(date);
-            expect(nextRef).toBeFalsy();
+            let [next, nextDate] = await DateTree.next(date);
+            expect(next).toBeFalsy();
             expect(nextDate).toBeFalsy();
         });
 
         it('should return nothing after the end date', async () => {
             let date = moment.utc('2012-12-08');
-            let [nextRef, nextDate] = await DateTree.nextRef(date);
-            expect(nextRef).toBeFalsy();
+            let [next, nextDate] = await DateTree.next(date);
+            expect(next).toBeFalsy();
             expect(nextDate).toBeFalsy();
         });
     });
 
-    describe('previousRef', () => {
+    describe('previous', () => {
 
         let data = {
             '2010-10-20': '-',
@@ -277,43 +277,43 @@ describe('DateTree #', () => {
             let promises: any[] = [];
             _.forIn(data, (value, dateStr) => {
                 let date = moment.utc(dateStr);
-                let ref = DateTree.getRef(date).put(value as never);
+                let ref = DateTree.get(date).put(value as never);
                 promises.push(ref.then!());
             });
             await Promise.all(promises);
         });
 
         it('should return the last ref without a date', async () => {
-            let [previousRef, previousDate] = await DateTree.previousRef();
-            expect(previousRef).toBeTruthy();
+            let [previous, previousDate] = await DateTree.previous();
+            expect(previous).toBeTruthy();
             expect(previousDate?.format('YYYY-MM-DD')).toBe('2012-12-07');
         });
 
         it('should return the last ref with a date higher than the last date', async () => {
             let date = moment.utc('2012-12-08');
-            let [previousRef, previousDate] = await DateTree.previousRef(date);
-            expect(previousRef).toBeTruthy();
+            let [previous, previousDate] = await DateTree.previous(date);
+            expect(previous).toBeTruthy();
             expect(previousDate?.format('YYYY-MM-DD')).toBe('2012-12-07');
         });
 
         it('should return the previous ref with a date', async () => {
             let date = moment.utc('2012-10-20');
-            let [previousRef, previousDate] = await DateTree.previousRef(date);
-            expect(previousRef).toBeTruthy();
+            let [previous, previousDate] = await DateTree.previous(date);
+            expect(previous).toBeTruthy();
             expect(previousDate?.format('YYYY-MM-DD')).toBe('2010-10-20');
         });
 
         it('should return nothing at the start date', async () => {
             let date = moment.utc('2010-10-20');
-            let [previousRef, previousDate] = await DateTree.previousRef(date);
-            expect(previousRef).toBeFalsy();
+            let [previous, previousDate] = await DateTree.previous(date);
+            expect(previous).toBeFalsy();
             expect(previousDate).toBeFalsy();
         });
 
         it('should return nothing before the start date', async () => {
             let date = moment.utc('2010-10-19');
-            let [previousRef, previousDate] = await DateTree.previousRef(date);
-            expect(previousRef).toBeFalsy();
+            let [previous, previousDate] = await DateTree.previous(date);
+            expect(previous).toBeFalsy();
             expect(previousDate).toBeFalsy();
         });
     });

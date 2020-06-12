@@ -64,7 +64,7 @@ export default class DateTree<T = any> {
      * it's reference.
      */
     put(date: Moment, value: T, callback?: AckCallback): IGunChainReference<T> {
-        let ref = this.getRef(date);
+        let ref = this.get(date);
         ref.put(value, callback);
         return ref;
     }
@@ -131,7 +131,7 @@ export default class DateTree<T = any> {
      * @param date
      * @returns A Gun node reference
      */
-    getRef(date: Moment): IGunChainReference<T> {
+    get(date: Moment): IGunChainReference<T> {
         let chain = this._getRefChain(date);
         return chain[chain.length - 1] as any;
     }
@@ -155,8 +155,8 @@ export default class DateTree<T = any> {
      * @param date
      * @returns A Gun node reference
      */
-    async nextRef(date?: Moment): Promise<[IGunChainReference<T> | undefined, Moment | undefined]> {
-        let it = this.iterateRefs({
+    async next(date?: Moment): Promise<[IGunChainReference<T> | undefined, Moment | undefined]> {
+        let it = this.iterate({
             start: date,
             startInclusive: false,
             endInclusive: true,
@@ -181,8 +181,8 @@ export default class DateTree<T = any> {
      * @param date
      * @returns A Gun node reference
      */
-    async previousRef(date?: Moment): Promise<[IGunChainReference<T> | undefined, Moment | undefined]> {
-        let it = this.iterateRefs({
+    async previous(date?: Moment): Promise<[IGunChainReference<T> | undefined, Moment | undefined]> {
+        let it = this.iterate({
             end: date,
             startInclusive: true,
             endInclusive: false,
@@ -207,7 +207,7 @@ export default class DateTree<T = any> {
      * `end` date.
      * @param param0 
      */
-    async * iterateRefs(opts: DateIterateOptions = {}): AsyncGenerator<[IGunChainReference<T>, Moment]> {
+    async * iterate(opts: DateIterateOptions = {}): AsyncGenerator<[IGunChainReference<T>, Moment]> {
         let {
             start,
             end,

@@ -108,7 +108,7 @@ export async function * iterateKeys(
  * the inner reference and its key.
  * @param ref Gun node reference
  **/
-export async function * iterateRefs<T = any>(
+export async function * iterate<T = any>(
     ref: IGunChainReference<T[] | Record<any, T>>,
     opts?: IterateOptions,
 ): AsyncGenerator<[IGunChainReference<T>, string]> {
@@ -129,7 +129,7 @@ export async function * iterateItems<T = any>(
     opts?: IterateOptions,
 ): AsyncGenerator<[T, string]> {
     // TODO: batch and resolve in parallel
-    for await (let [innerRef, key] of iterateRefs(ref, opts)) {
+    for await (let [innerRef, key] of iterate(ref, opts)) {
         let record: T = await innerRef.then!();
         yield [record, key];
     }
