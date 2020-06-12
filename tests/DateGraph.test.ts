@@ -74,7 +74,7 @@ describe('DateGraph #', () => {
         });
     });
 
-    describe('iterate', () => {
+    describe('iterateItems', () => {
 
         // The data is in descending order intentionally
         let data: { [date: string]: string } = {
@@ -99,7 +99,7 @@ describe('DateGraph #', () => {
 
         it('should iterate over refs in date range', async () => {
             let refTable: any = {};
-            let it = dateGraph.iterate({
+            let it = dateGraph.iterateItems({
                 start: moment.utc('2010-11-30'),
                 end: moment.utc('2011-01-04'),
             });
@@ -123,7 +123,7 @@ describe('DateGraph #', () => {
         });
     });
 
-    describe('next', () => {
+    describe('nextRef', () => {
 
         let data = {
             '2010-10-20': '-',
@@ -145,35 +145,35 @@ describe('DateGraph #', () => {
         });
 
         it('should return the first ref without a date', async () => {
-            let [nextRef, nextDate] = await dateGraph.next();
+            let [nextRef, nextDate] = await dateGraph.nextRef();
             expect(nextRef).toBeTruthy();
             expect(nextDate?.format('YYYY-MM-DD')).toBe('2010-10-20');
         });
 
         it('should return the first ref with a date lower than the first date', async () => {
             let date = moment.utc('2010-10-19');
-            let [nextRef, nextDate] = await dateGraph.next(date);
+            let [nextRef, nextDate] = await dateGraph.nextRef(date);
             expect(nextRef).toBeTruthy();
             expect(nextDate?.format('YYYY-MM-DD')).toBe('2010-10-20');
         });
 
         it('should return the next ref with a date', async () => {
             let date = moment.utc('2012-10-20');
-            let [nextRef, nextDate] = await dateGraph.next(date);
+            let [nextRef, nextDate] = await dateGraph.nextRef(date);
             expect(nextRef).toBeTruthy();
             expect(nextDate?.format('YYYY-MM-DD')).toBe('2012-11-30');
         });
 
         it('should return nothing at the end date', async () => {
             let date = moment.utc('2012-12-07');
-            let [nextRef, nextDate] = await dateGraph.next(date);
+            let [nextRef, nextDate] = await dateGraph.nextRef(date);
             expect(nextRef).toBeFalsy();
             expect(nextDate).toBeFalsy();
         });
 
         it('should return nothing after the end date', async () => {
             let date = moment.utc('2012-12-08');
-            let [nextRef, nextDate] = await dateGraph.next(date);
+            let [nextRef, nextDate] = await dateGraph.nextRef(date);
             expect(nextRef).toBeFalsy();
             expect(nextDate).toBeFalsy();
         });

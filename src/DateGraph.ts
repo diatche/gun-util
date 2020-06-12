@@ -1,7 +1,9 @@
 import { IGunChainReference } from "gun/types/chain";
 import _ from 'lodash';
 import moment, { Moment } from 'moment';
-import { iterateRefs, IterateOptions } from "./iterate";
+import { IterateOptions, iterateKeys } from "./iterate";
+
+// TODO: pad date components with zeros for lex sort
 
 export type DateResolution = 'year' | 'month' | 'day' | 'hour' | 'minute' | 'second' | 'millisecond';
 
@@ -22,14 +24,10 @@ export type DateComponents = {
     [K in DateResolution]?: number;
 }
 
-export interface DateIterateOptions extends IterateOptions {
+export type DateIterateOptions = Omit<IterateOptions, 'start' | 'end'> & {
     start?: Moment;
     end?: Moment;
-    /** True by default. */
-    startInclusive?: boolean;
-    /** False by default. */
-    endInclusive?: boolean;
-}
+};
 
 export default class DateGraph<T = any> {
     root: IGunChainReference;
@@ -92,8 +90,8 @@ export default class DateGraph<T = any> {
      * @param date
      * @returns A Gun node reference
      */
-    async next(date?: Moment): Promise<[IGunChainReference<T> | undefined, Moment | undefined]> {
-        let it = this.iterate({ start: date });
+    async nextRef(date?: Moment): Promise<[IGunChainReference<T> | undefined, Moment | undefined]> {
+        let it = this.iterateItems({ start: date });
         for await (let [ref, refDate] of it) {
             if (date) {
                 if (refDate.isSame(date)) {
@@ -113,11 +111,11 @@ export default class DateGraph<T = any> {
      * `end` date.
      * @param param0 
      */
-    async * iterate(opts: DateIterateOptions = {}): AsyncGenerator<[IGunChainReference<T>, Moment]> {
+    async * iterateItems(opts: DateIterateOptions = {}): AsyncGenerator<[IGunChainReference<T>, Moment]> {
         let {
             start,
             end,
-            ...otherOpts,
+            ...otherOpts
         } = opts;
         let ref: IGunChainReference | undefined = this.root;
         let startComps = (start && DateGraph.getDateComponents(start, this.resolution) || {}) as Partial<DateComponentsUnsafe>;
@@ -148,12 +146,12 @@ export default class DateGraph<T = any> {
                     let upStartComps = DateGraph.trimDateComponents(startComps, upRes);
                     if (!_.isEqual(upStartComps, upComps)) {
                         // Expand start
-                        startVal = 0;
+                        startVal = undefined;
                     }
                     let upEndComps = DateGraph.trimDateComponents(endComps, upRes);
                     if (!_.isEqual(upEndComps, upComps)) {
                         // Expand end
-                        endVal = MAX_DATE_COMPS[res];
+                        endVal = undefined;
                     }
                 }
             }
@@ -161,8 +159,8 @@ export default class DateGraph<T = any> {
                 // Queue another node for iteration
                 it = this._iterateRef(ref, {
                     ...otherOpts,
-                    start: startVal, 
-                    end: endVal,
+                    start: startVal?.toString(), 
+                    end: endVal?.toString(),
                 });
                 itStack.unshift(it);
                 ref = undefined;
@@ -213,44 +211,12 @@ export default class DateGraph<T = any> {
      */
     private async * _iterateRef(
         ref: IGunChainReference,
-        opts: DateIterateOptions & {
-            start: number | undefined;
-            end: number | undefined;
-        },
+        opts: IterateOptions,
     ): AsyncGenerator<[IGunChainReference<T>, number]> {
-        let {
-            start,
-            end,
-            startInclusive = true,
-            endInclusive = false,
-            reverse = false,
-        } = opts;
-        let checkStart = typeof start !== 'undefined';
-        let checkEnd = typeof end !== 'undefined';
-        if (checkStart && checkEnd) {
-            if (start === end) {
-                return;
-            } else if (start! > end!) {
-                throw new Error('Start value must be less than end value');
-            }
-        }
-        for await (let [innerRef, key] of iterateRefs(ref, opts)) {
+        for await (let key of iterateKeys(ref, opts)) {
+            let innerRef = ref.get(key);
             let compVal = Math.round(parseFloat(key));
-            if (!reverse) {
-                if (checkEnd && (compVal > end! || (endInclusive && compVal === end))) {
-                    break;
-                }
-                if (!checkStart || compVal > start! || (startInclusive && compVal === start)) {
-                    yield [innerRef, compVal];
-                }
-            } else {
-                if (checkStart && (compVal < start! || (startInclusive && compVal === start))) {
-                    break;
-                }
-                if (!checkEnd || compVal < end! || (endInclusive && compVal === end)) {
-                    yield [innerRef, compVal];
-                }
-            }
+            yield [innerRef as any, compVal];
         }
     }
 
