@@ -28,12 +28,15 @@ export type DateIterateOptions = Omit<IterateOptions, 'start' | 'end'> & {
     end?: Moment;
 };
 
-export default class DateGraph<T = any> {
+/**
+ * 
+ */
+export default class DateTree<T = any> {
     root: IGunChainReference;
     resolution: DateUnit;
 
     constructor(root: IGunChainReference, resolution: DateUnit) {
-        if (!DateGraph.isResolution(resolution)) {
+        if (!DateTree.isResolution(resolution)) {
             throw new Error('Invalid graph date resolution: ' + resolution);
         }
         this.root = root;
@@ -72,7 +75,7 @@ export default class DateGraph<T = any> {
      * @returns An unsubscribe function
      */
     changesAbout(date: Moment, callback: (comps: DateComponents) => void): () => void {
-        let comps = DateGraph.getDateComponents(date, this.resolution);
+        let comps = DateTree.getDateComponents(date, this.resolution);
         let units = Object.keys(comps);
         let refs = this._getRefChain(date);
         let refTable = _.zipObject(units, refs);
@@ -97,11 +100,11 @@ export default class DateGraph<T = any> {
                         return;
                     }
                     let changedUnit = unit as DateUnit;
-                    let changeComps = DateGraph.downsampleDateComponents(
+                    let changeComps = DateTree.downsampleDateComponents(
                         comps,
                         changedUnit
                     );
-                    let compVal = DateGraph.decodeDateComponent(key);
+                    let compVal = DateTree.decodeDateComponent(key);
                     if (compVal !== changeComps[changedUnit]) {
                         changeComps[changedUnit] = compVal;
                     } else {
@@ -112,7 +115,7 @@ export default class DateGraph<T = any> {
                     try {
                         callback(changeComps);
                     } catch (error) {
-                        console.error(`Uncaught error in DateGraph: ${error}`);
+                        console.error(`Uncaught error in DateTree: ${error}`);
                     }
                 });
             }, { change: true });
@@ -134,11 +137,11 @@ export default class DateGraph<T = any> {
     }
 
     private _getRefChain(date: Moment): IGunChainReference[] {
-        let comps = DateGraph.getDateComponents(date, this.resolution);
+        let comps = DateTree.getDateComponents(date, this.resolution);
         let ref = this.root;
         let refs = [ref];
         _.forIn(comps, (val, unit) => {
-            let key = DateGraph.encodeDateComponent(val, unit as DateUnit)!;
+            let key = DateTree.encodeDateComponent(val, unit as DateUnit)!;
             ref = ref.get(key);
             refs.push(ref);
         });
@@ -213,8 +216,8 @@ export default class DateGraph<T = any> {
             ...otherOpts
         } = opts;
         let ref: IGunChainReference | undefined = this.root;
-        let startComps = (start && DateGraph.getDateComponents(start, this.resolution) || {}) as Partial<DateComponentsUnsafe>;
-        let endComps = (end && DateGraph.getDateComponents(end, this.resolution) || {}) as Partial<DateComponentsUnsafe>;
+        let startComps = (start && DateTree.getDateComponents(start, this.resolution) || {}) as Partial<DateComponentsUnsafe>;
+        let endComps = (end && DateTree.getDateComponents(end, this.resolution) || {}) as Partial<DateComponentsUnsafe>;
         let comps: DateComponentsUnsafe = {};
         let units = this._allUnits();
         let unitIndex = 0;
@@ -225,7 +228,7 @@ export default class DateGraph<T = any> {
         while (unitIndex >= 0) {
             let goUp = false;
             let unit = units[unitIndex];
-            let [startVal, endVal] = DateGraph.getDateComponentRange(
+            let [startVal, endVal] = DateTree.getDateComponentRange(
                 comps,
                 startComps,
                 endComps,
@@ -238,8 +241,8 @@ export default class DateGraph<T = any> {
                 // Queue another node for iteration
                 it = this._iterateRef(ref, {
                     ...otherOpts,
-                    start: DateGraph.encodeDateComponent(startVal, unit), 
-                    end: DateGraph.encodeDateComponent(endVal, unit),
+                    start: DateTree.encodeDateComponent(startVal, unit), 
+                    end: DateTree.encodeDateComponent(endVal, unit),
                     startInclusive: unitStartInclusive,
                     endInclusive: unitEndInclusive,
                 });
@@ -251,7 +254,7 @@ export default class DateGraph<T = any> {
                 // Found data
                 for await (let [innerRef, compVal] of it) {
                     comps[unit] = compVal;
-                    let date = DateGraph.getDateWithComponents(
+                    let date = DateTree.getDateWithComponents(
                         comps,
                         this.resolution
                     );
@@ -296,7 +299,7 @@ export default class DateGraph<T = any> {
     ): AsyncGenerator<[IGunChainReference<T>, number]> {
         for await (let key of iterateKeys(ref, opts)) {
             let innerRef = ref.get(key);
-            let val = DateGraph.decodeDateComponent(key);
+            let val = DateTree.decodeDateComponent(key);
             yield [innerRef as any, val];
         }
     }
@@ -411,7 +414,7 @@ export default class DateGraph<T = any> {
         }
 
         if (typeof endVal !== 'undefined') {
-            let upEndComps = DateGraph.downsampleDateComponents(endComps, upUnit);
+            let upEndComps = DateTree.downsampleDateComponents(endComps, upUnit);
             if (!_.isEqual(upEndComps, upComps)) {
                 // Expand end
                 endVal = undefined;
