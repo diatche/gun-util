@@ -90,6 +90,7 @@ describe('DateGraph #', () => {
                 comps => compsStack.push(comps),
             )
             let dates = [
+                '2020-01-03',
                 '2020-01-04',
                 '2020-01-05',
                 '2020-01-06',
@@ -105,10 +106,38 @@ describe('DateGraph #', () => {
                 .sort();
             receivedDates = _.uniq(receivedDates);
             expect(receivedDates).toEqual([
+                '2020-01-03',
                 '2020-01-05',
                 '2020-01-06',
                 '2020-02-01',
                 '2021-01-01',
+            ]);
+        });
+
+        it('should not callback after unsubscribe', async () => {
+            let compsStack: DateComponents[] = [];
+            let off = dateGraph.changesAbout(
+                moment.utc('2020-01-04'),
+                comps => compsStack.push(comps),
+            )
+            let dates = [
+                '2020-01-05',
+                '2020-01-06',
+                '2020-02-01',
+            ];
+            for (let date of dates) {
+                await dateGraph.put(moment.utc(date), 'a').then!()
+                if (date === '2020-01-06') {
+                    off();
+                }
+            }
+            let receivedDates = compsStack
+                .map(c => DateGraph.getDateWithComponents(c).format('YYYY-MM-DD'))
+                .sort();
+            receivedDates = _.uniq(receivedDates);
+            expect(receivedDates).toEqual([
+                '2020-01-05',
+                '2020-01-06',
             ]);
         });
     });
