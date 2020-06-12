@@ -90,13 +90,44 @@ export default class DateGraph<T = any> {
      * @returns A Gun node reference
      */
     async nextRef(date?: Moment): Promise<[IGunChainReference<T> | undefined, Moment | undefined]> {
-        let it = this.iterateItems({ start: date });
+        let it = this.iterateRefs({
+            start: date,
+            startInclusive: false,
+            endInclusive: true,
+        });
         for await (let [ref, refDate] of it) {
             if (date) {
                 if (refDate.isSame(date)) {
                     continue;
                 } else if (refDate.isBefore(date)) {
-                    throw new Error('Unexpected date');
+                    throw new Error(`Unexpected date ${refDate} after ${date}`);
+                }
+            }
+            return [ref, refDate];
+        }
+        return [undefined, undefined];
+    }
+
+    /**
+     * Gets the previous Gun node reference for a particular date
+     * if one exists. If no date is specified, returns the
+     * last node reference.
+     * @param date
+     * @returns A Gun node reference
+     */
+    async previousRef(date?: Moment): Promise<[IGunChainReference<T> | undefined, Moment | undefined]> {
+        let it = this.iterateRefs({
+            end: date,
+            startInclusive: true,
+            endInclusive: false,
+            reverse: true,
+        });
+        for await (let [ref, refDate] of it) {
+            if (date) {
+                if (refDate.isSame(date)) {
+                    continue;
+                } else if (refDate.isAfter(date)) {
+                    throw new Error(`Unexpected date ${refDate} before ${date}`);
                 }
             }
             return [ref, refDate];
@@ -110,62 +141,50 @@ export default class DateGraph<T = any> {
      * `end` date.
      * @param param0 
      */
-    async * iterateItems(opts: DateIterateOptions = {}): AsyncGenerator<[IGunChainReference<T>, Moment]> {
+    async * iterateRefs(opts: DateIterateOptions = {}): AsyncGenerator<[IGunChainReference<T>, Moment]> {
         let {
             start,
             end,
+            startInclusive = true,
+            endInclusive = false,
             ...otherOpts
         } = opts;
         let ref: IGunChainReference | undefined = this.root;
         let startComps = (start && DateGraph.getDateComponents(start, this.resolution) || {}) as Partial<DateComponentsUnsafe>;
         let endComps = (end && DateGraph.getDateComponents(end, this.resolution) || {}) as Partial<DateComponentsUnsafe>;
         let comps: DateComponentsUnsafe = {};
-        let unit: DateUnit;
         let units = this._allUnits();
-        let resIndex = 0;
-        let resLen = units.length;
+        let unitIndex = 0;
+        let unitsLen = units.length;
         let it: AsyncGenerator<[IGunChainReference<T>, number]> | undefined;
         let itStack: AsyncGenerator<[IGunChainReference<T>, number]>[] = [];
-        let startVal: number | undefined;
-        let endVal: number | undefined;
-        let goUp = false;
 
-        while (resIndex >= 0) {
-            goUp = false;
-            unit = units[resIndex];
-            startVal = startComps[unit];
-            endVal = endComps[unit];
-            if (typeof endVal !== 'undefined') {
-                if (resIndex < resLen - 1) {
-                    endVal += 1;
-                }
-                if (resIndex > 0) {
-                    let upUnit = units[resIndex - 1];
-                    let upComps = DateGraph.trimDateComponents(comps, upUnit);
-                    let upStartComps = DateGraph.trimDateComponents(startComps, upUnit);
-                    if (!_.isEqual(upStartComps, upComps)) {
-                        // Expand start
-                        startVal = undefined;
-                    }
-                    let upEndComps = DateGraph.trimDateComponents(endComps, upUnit);
-                    if (!_.isEqual(upEndComps, upComps)) {
-                        // Expand end
-                        endVal = undefined;
-                    }
-                }
-            }
+        while (unitIndex >= 0) {
+            let goUp = false;
+            let unit = units[unitIndex];
+            let [startVal, endVal] = DateGraph.getDateComponentRange(
+                comps,
+                startComps,
+                endComps,
+                unit
+            );
+            let atLeaf = unitIndex === unitsLen - 1;
+            let unitStartInclusive = startInclusive || !atLeaf;
+            let unitEndInclusive = endInclusive || !atLeaf;
             if (ref) {
                 // Queue another node for iteration
                 it = this._iterateRef(ref, {
                     ...otherOpts,
                     start: DateGraph.encodeDateComponent(startVal, unit), 
                     end: DateGraph.encodeDateComponent(endVal, unit),
+                    startInclusive: unitStartInclusive,
+                    endInclusive: unitEndInclusive,
                 });
                 itStack.unshift(it);
                 ref = undefined;
             }
 
-            if (it && resIndex === resLen - 1) {
+            if (it && atLeaf) {
                 // Found data
                 for await (let [innerRef, compVal] of it) {
                     comps[unit] = compVal;
@@ -188,12 +207,12 @@ export default class DateGraph<T = any> {
                     // Go down a level
                     ref = next.value[0];
                     comps[unit] = next.value[1];
-                    resIndex += 1;
+                    unitIndex += 1;
                 }
             }
             if (goUp) {
                 itStack.shift();
-                resIndex -= 1;
+                unitIndex -= 1;
                 if (unit in comps) {
                     delete comps[unit];
                 }
@@ -296,6 +315,49 @@ export default class DateGraph<T = any> {
             }
         }
         return newComponents;
+    }
+
+    static getDateComponentRange(
+        comps: DateComponents,
+        startComps: DateComponents,
+        endComps: DateComponents,
+        unit: DateUnit,
+    ): [number | undefined, number | undefined] {
+        let startVal = startComps[unit];
+        let endVal = endComps[unit];
+        if (typeof startVal === 'undefined' && typeof endVal === 'undefined') {
+            return [startVal, endVal];
+        }
+        
+        let upUnit = this.getHigherUnit(unit);
+        if (!upUnit) {
+            return [startVal, endVal];
+        }
+        let upComps = this.trimDateComponents(comps, upUnit);
+
+        if (typeof startVal !== 'undefined') {
+            let upStartComps = this.trimDateComponents(startComps, upUnit);
+            if (!_.isEqual(upStartComps, upComps)) {
+                // Expand start
+                startVal = undefined;
+            }
+        }
+
+        if (typeof endVal !== 'undefined') {
+            let upEndComps = DateGraph.trimDateComponents(endComps, upUnit);
+            if (!_.isEqual(upEndComps, upComps)) {
+                // Expand end
+                endVal = undefined;
+            }
+        }
+
+        return [startVal, endVal]
+    }
+
+    static getHigherUnit(unit: DateUnit): DateUnit | undefined {
+        let i = ALL_DATE_UNITS.indexOf(unit);
+        if (i < 0) return undefined;
+        return ALL_DATE_UNITS[i - 1];
     }
 
     /**

@@ -39,12 +39,11 @@ export async function * iterateKeys(
         endInclusive = false,
         reverse = false,
     } = opts;
-    let checkStart = typeof start !== 'undefined';
-    let checkEnd = typeof end !== 'undefined';
-    if (checkStart && checkEnd) {
+
+    if (typeof start !== 'undefined' && typeof end !== 'undefined') {
         if (start === end && !(startInclusive && endInclusive)) {
             return;
-        } else if (start! > end!) {
+        } else if (start > end) {
             throw new Error('Start value must be less than end value');
         }
     }
@@ -63,26 +62,43 @@ export async function * iterateKeys(
     obj = _.omit(obj, '_');
     
     let keys = Object.keys(obj).sort();
+    let len = keys.length;
+    if (len === 0) {
+        return;
+    }
+
+    // Find iteration bounds
+    let iStart = 0;
+    if (typeof start !== 'undefined') {
+        iStart = _.sortedIndex(keys, start);
+        let key = keys[iStart];
+        if (key <= start && !startInclusive) {
+            iStart += 1;
+        }
+    }
+    let iEnd = len - 1;
+    if (typeof end !== 'undefined') {
+        iEnd = _.sortedIndex(keys, end);
+        let key = keys[iEnd];
+        if (key >= end && !endInclusive) {
+            iEnd -= 1;
+        }
+        iEnd = Math.min(iEnd, len - 1);
+    }
+    if (iStart > iEnd) {
+        return;
+    }
+
+    // Iterate
     if (!reverse) {
         // Natural direction
-        for (let key of keys) {
-            if (checkEnd && (key > end! || (!endInclusive && key === end))) {
-                break;
-            }
-            if (!checkStart || key > start! || (startInclusive && key === start)) {
-                yield key;
-            }
+        for (let i = iStart; i <= iEnd; i++) {
+            yield keys[i];
         }
     } else {
         // Reverse direction
-        for (let i = keys.length - 1; i >= 0; i--) {
-            let key = keys[i];
-            if (checkStart && (key < start! || (!startInclusive && key === start))) {
-                break;
-            }
-            if (!checkEnd || key < end! || (endInclusive && key === end)) {
-                yield key;
-            }
+        for (let i = iEnd; i >= iStart; i--) {
+            yield keys[i];
         }
     }
 }
