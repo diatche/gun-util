@@ -2,6 +2,7 @@ import { IGunChainReference } from "gun/types/chain";
 import _ from 'lodash';
 import moment, { Moment } from 'moment';
 import { IterateOptions, iterateKeys } from "./iterate";
+import { AckCallback } from "gun/types/types";
 
 export type DateUnit = 'year' | 'month' | 'day' | 'hour' | 'minute' | 'second' | 'millisecond';
 
@@ -59,10 +60,65 @@ export default class DateGraph<T = any> {
      * Puts the value at the date and returns
      * it's reference.
      */
-    put(date: Moment, value: T): IGunChainReference<T> {
+    put(date: Moment, value: T, callback?: AckCallback): IGunChainReference<T> {
         let ref = this.getRef(date);
-        ref.put(value);
+        ref.put(value, callback);
         return ref;
+    }
+
+    /**
+     * Listens to changes about the specified date.
+     * @param date 
+     * @returns An unsubscribe function
+     */
+    changesAbout(date: Moment, callback: (comps: DateComponents) => void): () => void {
+        let comps = DateGraph.getDateComponents(date, this.resolution);
+        let units = Object.keys(comps);
+        let refs = this._getRefChain(date);
+        let refTable = _.zipObject(units, refs);
+        let eventsTable: { [unit: string]: IGunChainReference } = {};
+
+        let off = () => {
+            if (_.isEmpty(eventsTable)) {
+                return;
+            }
+            _.forIn(eventsTable, (events, unit) => {
+                events.off();
+            });
+            eventsTable = {};
+        };
+
+        _.forIn(refTable, (ref, unit) => {
+            let events = ref.on(changes => {
+                // Received changes
+                _.forIn(changes, (val, key) => {
+                    if (key === '_') {
+                        // Meta
+                        return;
+                    }
+                    let changedUnit = unit as DateUnit;
+                    let changeComps = DateGraph.downsampleDateComponents(
+                        comps,
+                        changedUnit
+                    );
+                    let compVal = DateGraph.decodeDateComponent(key);
+                    if (compVal !== changeComps[changedUnit]) {
+                        changeComps[changedUnit] = compVal;
+                    } else {
+                        // Filter changes to the current ref chain
+                        return;
+                    }
+
+                    try {
+                        callback(changeComps);
+                    } catch (error) {
+                        console.error(`Uncaught error in DateGraph: ${error}`);
+                    }
+                });
+            }, { change: true });
+            eventsTable[unit] = events;
+        });
+        return off;
     }
 
     /**
@@ -73,13 +129,20 @@ export default class DateGraph<T = any> {
      * @returns A Gun node reference
      */
     getRef(date: Moment): IGunChainReference<T> {
+        let chain = this._getRefChain(date);
+        return chain[chain.length - 1] as any;
+    }
+
+    private _getRefChain(date: Moment): IGunChainReference[] {
         let comps = DateGraph.getDateComponents(date, this.resolution);
         let ref = this.root;
+        let refs = [ref];
         _.forIn(comps, (val, unit) => {
             let key = DateGraph.encodeDateComponent(val, unit as DateUnit)!;
             ref = ref.get(key);
+            refs.push(ref);
         });
-        return ref as IGunChainReference<T>;
+        return refs;
     }
 
     /**
@@ -233,8 +296,8 @@ export default class DateGraph<T = any> {
     ): AsyncGenerator<[IGunChainReference<T>, number]> {
         for await (let key of iterateKeys(ref, opts)) {
             let innerRef = ref.get(key);
-            let compVal = Math.round(parseFloat(key));
-            yield [innerRef as any, compVal];
+            let val = DateGraph.decodeDateComponent(key);
+            yield [innerRef as any, val];
         }
     }
 
@@ -306,7 +369,11 @@ export default class DateGraph<T = any> {
         return key.padStart(padLen, '0');
     }
 
-    static trimDateComponents(components: DateComponents, resolution: DateUnit): DateComponents {
+    static decodeDateComponent(key: string): number {
+        return Math.round(parseFloat(key));
+    }
+
+    static downsampleDateComponents(components: DateComponents, resolution: DateUnit): DateComponents {
         let newComponents: DateComponentsUnsafe = {};
         for (let res of ALL_DATE_UNITS) {
             newComponents[res] = (components as DateComponentsUnsafe)[res];
@@ -329,14 +396,14 @@ export default class DateGraph<T = any> {
             return [startVal, endVal];
         }
         
-        let upUnit = this.getHigherUnit(unit);
+        let upUnit = this.getBiggerUnit(unit);
         if (!upUnit) {
             return [startVal, endVal];
         }
-        let upComps = this.trimDateComponents(comps, upUnit);
+        let upComps = this.downsampleDateComponents(comps, upUnit);
 
         if (typeof startVal !== 'undefined') {
-            let upStartComps = this.trimDateComponents(startComps, upUnit);
+            let upStartComps = this.downsampleDateComponents(startComps, upUnit);
             if (!_.isEqual(upStartComps, upComps)) {
                 // Expand start
                 startVal = undefined;
@@ -344,7 +411,7 @@ export default class DateGraph<T = any> {
         }
 
         if (typeof endVal !== 'undefined') {
-            let upEndComps = DateGraph.trimDateComponents(endComps, upUnit);
+            let upEndComps = DateGraph.downsampleDateComponents(endComps, upUnit);
             if (!_.isEqual(upEndComps, upComps)) {
                 // Expand end
                 endVal = undefined;
@@ -354,10 +421,16 @@ export default class DateGraph<T = any> {
         return [startVal, endVal]
     }
 
-    static getHigherUnit(unit: DateUnit): DateUnit | undefined {
+    static getBiggerUnit(unit: DateUnit): DateUnit | undefined {
         let i = ALL_DATE_UNITS.indexOf(unit);
         if (i < 0) return undefined;
         return ALL_DATE_UNITS[i - 1];
+    }
+
+    static getSmallerUnit(unit: DateUnit): DateUnit | undefined {
+        let i = ALL_DATE_UNITS.indexOf(unit);
+        if (i === ALL_DATE_UNITS.length - 1) return undefined;
+        return ALL_DATE_UNITS[i + 1];
     }
 
     /**

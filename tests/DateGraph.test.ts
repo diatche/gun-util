@@ -81,6 +81,38 @@ describe('DateGraph #', () => {
         (gun as any) = undefined;
     });
 
+    describe('changesAbout', () => {
+
+        it('should callback with changes', async () => {
+            let compsStack: DateComponents[] = [];
+            dateGraph.changesAbout(
+                moment.utc('2020-01-04'),
+                comps => compsStack.push(comps),
+            )
+            let dates = [
+                '2020-01-04',
+                '2020-01-05',
+                '2020-01-06',
+                '2020-02-01',
+                '2020-02-02',
+                '2021-01-01',
+                '2021-01-02',
+            ];
+            let promises = dates.map(d => dateGraph.put(moment.utc(d), 'a').then!())
+            await Promise.all(promises);
+            let receivedDates = compsStack
+                .map(c => DateGraph.getDateWithComponents(c).format('YYYY-MM-DD'))
+                .sort();
+            receivedDates = _.uniq(receivedDates);
+            expect(receivedDates).toEqual([
+                '2020-01-05',
+                '2020-01-06',
+                '2020-02-01',
+                '2021-01-01',
+            ]);
+        });
+    });
+
     describe('getRef', () => {
 
         it('should return the correct node', async () => {
