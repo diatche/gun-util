@@ -14,3 +14,12 @@ export function getConnectedPeers<T>(gun: IGunChainReference<T>): IGunPeer[] {
     }
     return connectedPeers;
 };
+
+
+/*
+
+anyone got a better way to remove peers than gun.back('opt.peers')[peerurl].wire.close(); gun.opt({peers: []}); gun.opt({peers: newpeers})
+
+<@!721344914297978892> I think you can pass the peer to `gun.on('bye', {peer})`, ... I think?
+
+*/
