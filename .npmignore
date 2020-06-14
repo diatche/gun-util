@@ -103,6 +103,9 @@ typings/
 .tern-port
 
 # Project
+src/
+tests/
+tsconfig.json
 package-lock.json
 .vscode/
 .github/
