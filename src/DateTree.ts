@@ -37,7 +37,7 @@ export default class DateTree<T = any> {
     root: IGunChainReference;
     resolution: DateUnit;
 
-    constructor(root: IGunChainReference, resolution: DateUnit) {
+    constructor(root: IGunChainReference<any>, resolution: DateUnit) {
         if (!DateTree.isResolution(resolution)) {
             throw new Error('Invalid graph date resolution: ' + resolution);
         }
