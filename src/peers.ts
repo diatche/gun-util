@@ -22,4 +22,6 @@ anyone got a better way to remove peers than gun.back('opt.peers')[peerurl].wire
 
 <@!721344914297978892> I think you can pass the peer to `gun.on('bye', {peer})`, ... I think?
 
+@marknadal thanks mark for your reply, unfortunately  gun still reconnects to the peer after gun.on('bye', {peer})
+
 */
