@@ -4,6 +4,7 @@ import { IGunChainReference } from 'gun/types/chain';
 import _ from 'lodash';
 import Gun from 'gun';
 import { GunUser } from '..';
+import { gunLogOnceFix } from '../src/temp';
 
 interface Item {
     name: string;
@@ -22,6 +23,8 @@ interface UserState {
 let gun: IGunChainReference<State>;
 let userRef: IGunChainReference<UserState>;
 const creds = { alias: 'foo', pass: 'bar' };
+
+gunLogOnceFix(Gun);
 
 describe('iterate', () => {
     jest.setTimeout(20000);
