@@ -8,6 +8,9 @@ export interface GunUserCredentials {
     pass: string
 }
 
+/**
+ * Convenience methods for creating an authenticating a Gun user.
+ */
 export default class GunUser {
     static _authOp = false;
 

@@ -16,8 +16,8 @@ export interface IGunUserRecord<T=any> extends GunTypes.IGunRecordNodeRaw<T> {
     _: IGunUserRecordMeta<T>;
 }
 
-export interface IGunRefQuery {
-    '.': IGunRefQueryFilter,
+export interface IGunQuery {
+    '.': IGunFilter,
     /**
      * To prevent flooding the network, any response to a
      * lexical lookup that does not have an exact match
@@ -27,12 +27,13 @@ export interface IGunRefQuery {
     '%': number,
 }
 
-export interface IGunRefQueryFilter {
+export interface IGunFilter {
     /** Prefix match */
     '*'?: string;
     '>'?: string;
     '<'?: string;
+    /** Exact match */
     '='?: string;
-    /** Reverse direction */
+    /** 1: Reverse direction */
     '-'?: 0 | 1;
 }

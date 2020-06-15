@@ -1,7 +1,7 @@
 import Gun from 'gun';
 import { 
     gunLogOnceFix,
-    iterate
+    iterateItems
 } from '../dist/index.mjs';
 
 // In case Gun.log.once is undefined
@@ -15,12 +15,14 @@ list.put({ b: 'bar' });
 list.put({ c: 'gun' });
 
 (async () => {
-    for await (let key of iterate(list)) {
-        console.log(key);
+    for await (let [key, value] of iterateItems(list)) {
+        console.log(key + ': ' + value);
     }
 })();
 
 // Output:
-// foo
-// bar
-// gun
+// foo: a
+// bar: b
+// gun: c
+
+// Delete your radata folder (Gun's local storage) if you see unexpected logs
