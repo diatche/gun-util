@@ -32,7 +32,9 @@ export type DateIterateOptions = Omit<IterateOptions, 'start' | 'end'> & {
 };
 
 /**
- * 
+ * Efficiently distributes and stores data in a tree with nodes using date
+ * components as keys up to a specified resolution.
+ * The root of the tree is specified as a Gun node reference.
  */
 export default class DateTree<T = any> {
     root: IGunChainReference;

@@ -6,6 +6,8 @@ Convenience and utility methods for [GunDB](https://github.com/amark/gun).
 
 Install using yarn with `yarn add gun-util` or npm `npm install gun-util`.
 
+*If you are ES modules, you may need to import from `'date-util/dist/index.mjs'` for imports to work.*
+
 ## Documentation
 
 ### DateTree
@@ -36,8 +38,6 @@ let gun = Gun();
 let treeRoot = gun.get('tree');
 let tree = new DateTree(treeRoot, 'day');
 ```
-
-*You may need to import from `'date-util/dist/index.mjs'` for ES module to work.*
 
 **Getting a node at a specific date:**
 
@@ -133,3 +133,8 @@ we can call `unsub()` and resubscribe to a later date.
 **Other examples**
 
 Have a look at the examples folder.
+
+### GunUser
+
+Convenience methods for creating an authenticating a Gun user.
+
