@@ -1,5 +1,5 @@
 import { iterate } from '../src/iterate';
-import { TEST_GUN_OPTIONS } from '../src/gun';
+import { TEST_GUN_OPTIONS } from '../src/const';
 import { IGunChainReference } from 'gun/types/chain';
 import _ from 'lodash';
 import Gun from 'gun';
