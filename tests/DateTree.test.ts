@@ -339,4 +339,54 @@ describe('DateTree #', () => {
             expect(previousDate).toBeFalsy();
         });
     });
+
+    describe('latest', () => {
+
+        let data = {
+            '2012-11-30': 'a',
+            '2012-12-05': 'b',
+        }
+
+        beforeEach(async () => {
+            // Add data to graph
+            let promises: any[] = [];
+            _.forIn(data, (value, dateStr) => {
+                let date = moment.utc(dateStr);
+                let ref = tree.get(date).put(value as never);
+                promises.push(ref.then!());
+            });
+            await Promise.all(promises);
+        });
+
+        it('should return the latest date', async () => {
+            let [latest, latestDate] = await tree.latest();
+            expect(latest).toBeTruthy();
+            expect(latestDate?.format('YYYY-MM-DD')).toBe('2012-12-05');
+        });
+    });
+
+    describe('earliest', () => {
+
+        let data = {
+            '2012-11-30': 'a',
+            '2012-12-05': 'b',
+        }
+
+        beforeEach(async () => {
+            // Add data to graph
+            let promises: any[] = [];
+            _.forIn(data, (value, dateStr) => {
+                let date = moment.utc(dateStr);
+                let ref = tree.get(date).put(value as never);
+                promises.push(ref.then!());
+            });
+            await Promise.all(promises);
+        });
+
+        it('should return the earliest date', async () => {
+            let [earliest, earliestDate] = await tree.earliest();
+            expect(earliest).toBeTruthy();
+            expect(earliestDate?.format('YYYY-MM-DD')).toBe('2012-11-30');
+        });
+    });
 });

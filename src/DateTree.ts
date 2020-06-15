@@ -8,7 +8,7 @@ import { AckCallback } from "gun/types/types";
 export type DateUnit = 'year' | 'month' | 'day' | 'hour' | 'minute' | 'second' | 'millisecond';
 
 export const ALL_DATE_UNITS: DateUnit[] = [
-    'year',  'month',  'day',  'hour',  'minute',  'second', 'millisecond',
+    'year', 'month', 'day', 'hour', 'minute', 'second', 'millisecond',
 ];
 
 export type DateParsable = Moment | Date | string | number;
@@ -74,7 +74,34 @@ export default class DateTree<T = any> {
 
     /**
      * Listens to changes about the specified date.
+     * 
+     * Let's say we want to listen to changes to a blog described
+     * by a date tree.
+     * How would we handle a case where we are close to the end
+     * of the nodes for the current time period?
+     * 
+     * For example, we are at 2019-12-31 23:54, which is the end
+     * of the hour, day, month and year. We may get a message this
+     * next minute, hour, day, month or year.
+     * Subscribing to all nodes would be impractical.
+     * Listen to a single path of the tree instead with `changesAbout()`.
+     * 
+     * **Proposed strategy:**
+     * 
+     * At each date in the future, we can call `latest()`
+     * and `iterate()` to get the latest data.
+     * 
+     * When the date gets too far away, we can call `unsub()`
+     * and resubscribe to a later date.
+     * 
      * @param date 
+     * @param callback
+     * 
+     * Whenever a node changes next to the direct path between the root and the
+     * tree's maximum resolution, the callback is called with the date components
+     * identifying the node. Note that the date components are partial unless the
+     * change occured at the maximum resolution.
+     * 
      * @returns An unsubscribe function
      */
     changesAbout(date: DateParsable, callback: (comps: DateComponents) => void): () => void {
@@ -178,11 +205,29 @@ export default class DateTree<T = any> {
     }
 
     /**
+     * Gets the latest Gun node reference if one exists.
+     * @param date
+     * @returns A Gun node reference and its date
+     */
+    async latest(): Promise<[IGunChainReference<T> | undefined, Moment | undefined]> {
+        return this.previous();
+    }
+
+    /**
+     * Gets the earliest Gun node reference if one exists.
+     * @param date
+     * @returns A Gun node reference and its date
+     */
+    async earliest(): Promise<[IGunChainReference<T> | undefined, Moment | undefined]> {
+        return this.next();
+    }
+
+    /**
      * Gets the next Gun node reference for a particular date
      * if one exists. If no date is specified, returns the
      * first node reference.
      * @param date
-     * @returns A Gun node reference
+     * @returns A Gun node reference and its date
      */
     async next(date?: DateParsable): Promise<[IGunChainReference<T> | undefined, Moment | undefined]> {
         let it = this.iterate({
@@ -208,7 +253,7 @@ export default class DateTree<T = any> {
      * if one exists. If no date is specified, returns the
      * last node reference.
      * @param date
-     * @returns A Gun node reference
+     * @returns A Gun node reference and its date
      */
     async previous(date?: Moment): Promise<[IGunChainReference<T> | undefined, Moment | undefined]> {
         let it = this.iterate({
@@ -270,7 +315,7 @@ export default class DateTree<T = any> {
                 // Queue another node for iteration
                 it = this._iterateRef(ref, {
                     ...otherOpts,
-                    start: DateTree.encodeDateComponent(startVal, unit), 
+                    start: DateTree.encodeDateComponent(startVal, unit),
                     end: DateTree.encodeDateComponent(endVal, unit),
                     startInclusive: unitStartInclusive,
                     endInclusive: unitEndInclusive,
@@ -426,7 +471,7 @@ export default class DateTree<T = any> {
         if (typeof startVal === 'undefined' && typeof endVal === 'undefined') {
             return [startVal, endVal];
         }
-        
+
         let upUnit = this.getBiggerUnit(unit);
         if (!upUnit) {
             return [startVal, endVal];
