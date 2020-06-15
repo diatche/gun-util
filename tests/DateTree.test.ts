@@ -1,5 +1,5 @@
 import { IGunChainReference } from "gun/types/chain";
-import { TEST_GUN_OPTIONS } from "../src/gun";
+import { TEST_GUN_OPTIONS } from "../src/const";
 import Gun from "gun";
 import { DateTree, DateComponents } from "../src";
 import { gunLogOnceFix } from "../src/temp";
@@ -147,7 +147,6 @@ describe('DateTree #', () => {
         it('should return the correct node', async () => {
             tree.get(moment('2020-05-01')).put('test1' as never);
             tree.get(moment('2021-01-03')).put('test2' as never);
-            gunLogOnceFix();
             let val1 = await treeRoot.get('2020').get('05').get('01').then!();
             expect(val1).toBe('test1');
             let val2 = await treeRoot.get('2021').get('01').get('03').then!();

@@ -1,5 +1,5 @@
 import { iterateValues, iterateKeys, IterateOptions, iterateAll } from '../src/iterate';
-import { TEST_GUN_OPTIONS } from '../src/temp';
+import { TEST_GUN_OPTIONS } from '../src/const';
 import { IGunChainReference } from 'gun/types/chain';
 import _ from 'lodash';
 import Gun from 'gun';
@@ -35,13 +35,7 @@ let userRef: IGunChainReference<UserState>;
 let creds: GunUserCredentials;
 let runId: string;
 
-<<<<<<< HEAD
-gunLogOnceFix(Gun);
-
-describe('iterate', () => {
-=======
 describe('iterate #', () => {
->>>>>>> Iterate methods support filtering and reversal.
     jest.setTimeout(20000);
 
     beforeAll(() => {

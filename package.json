@@ -35,7 +35,6 @@
   "license": "MIT",
   "dependencies": {
     "@types/lodash": "^4.14.155",
-    "gun": "^0.2020.520",
     "lodash": "^4.17.15",
     "moment": "^2.26.0"
   },
