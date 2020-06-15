@@ -81,6 +81,34 @@ describe('DateTree #', () => {
         (gun as any) = undefined;
     });
 
+    describe('get', () => {
+
+        it('should return the correct node with a moment', async () => {
+            tree.get(moment('2020-05-01')).put('test1' as never);
+            tree.get(moment('2021-01-03')).put('test2' as never);
+            let val1 = await treeRoot.get('2020').get('05').get('01').then!();
+            expect(val1).toBe('test1');
+            let val2 = await treeRoot.get('2021').get('01').get('03').then!();
+            expect(val2).toBe('test2');
+        });
+
+        it('should return the correct node with an ISO date string', async () => {
+            tree.get('2020-05-06').put('test3' as never);
+            let val1 = await treeRoot.get('2020').get('05').get('06').then!();
+            expect(val1).toBe('test3');
+        });
+    });
+
+    describe('getDate', () => {
+
+        it('should return the correct date', () => {
+            let ref = treeRoot.get('2020').get('05').get('01');
+            ref.put({ label: 'foo' } as never);
+            let date = tree.getDate(ref);
+            expect(date.toISOString()).toEqual(moment.utc('2020-05-01').toISOString());
+        });
+    });
+
     describe('changesAbout', () => {
 
         it('should callback with changes', async () => {
@@ -139,18 +167,6 @@ describe('DateTree #', () => {
                 '2020-01-05',
                 '2020-01-06',
             ]);
-        });
-    });
-
-    describe('get', () => {
-
-        it('should return the correct node', async () => {
-            tree.get(moment('2020-05-01')).put('test1' as never);
-            tree.get(moment('2021-01-03')).put('test2' as never);
-            let val1 = await treeRoot.get('2020').get('05').get('01').then!();
-            expect(val1).toBe('test1');
-            let val2 = await treeRoot.get('2021').get('01').get('03').then!();
-            expect(val2).toBe('test2');
         });
     });
 

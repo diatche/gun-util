@@ -1,3 +1,4 @@
+import Gun from 'gun';
 import { IGunChainReference } from "gun/types/chain";
 import _ from 'lodash';
 import moment, { Moment } from 'moment';
@@ -46,14 +47,14 @@ export default class DateTree<T = any> {
     }
 
     nextDate(date: DateParsable): Moment {
-        let m = moment(date);
+        let m = parseDate(date);
         let floor = m.startOf(this.resolution);
         let next = floor.add(1, this.resolution);
         return next;
     }
 
     previousDate(date: DateParsable): Moment {
-        let m = moment(date);
+        let m = parseDate(date);
         let floor = m.startOf(this.resolution);
         if (floor.isSame(m)) {
             floor = floor.subtract(1, this.resolution);
@@ -77,7 +78,7 @@ export default class DateTree<T = any> {
      * @returns An unsubscribe function
      */
     changesAbout(date: DateParsable, callback: (comps: DateComponents) => void): () => void {
-        let m = moment(date);
+        let m = parseDate(date);
         let comps = DateTree.getDateComponents(m, this.resolution);
         let units = Object.keys(comps);
         let refs = this._getRefChain(m);
@@ -128,14 +129,39 @@ export default class DateTree<T = any> {
     }
 
     /**
-     * Gets the Gun node reference for a particular date
+     * Returns the date for the specified Gun node reference.
+     * @param ref Gun node reference
+     * @returns Date
+     */
+    getDate(ref: IGunChainReference<T>): Moment {
+        let currentRef: any = ref;
+        let units = this._allUnits();
+        let keys: string[] = [];
+        while (currentRef && keys.length < units.length) {
+            if (currentRef === this.root) {
+                throw new Error('Invalid Gun node reference. Expected a leaf on the date tree.');
+            }
+            let key = currentRef._.get;
+            keys.unshift(key);
+            currentRef = currentRef.back();
+        }
+        if (currentRef !== this.root) {
+            throw new Error('Invalid Gun node reference. Expected a leaf on the date tree.');
+        }
+        let values = keys.map(k => DateTree.decodeDateComponent(k));
+        let comps: DateComponentsUnsafe = _.zipObject(units, values);
+        return DateTree.getDateWithComponents(comps);
+    }
+
+    /**
+     * Returns the Gun node reference for a particular date
      * up to the receiver's maximum resolution. If none
      * exists, it is created.
-     * @param date
-     * @returns A Gun node reference
+     * @param date Date
+     * @returns Gun node reference
      */
     get(date: DateParsable): IGunChainReference<T> {
-        let chain = this._getRefChain(moment(date));
+        let chain = this._getRefChain(parseDate(date));
         return chain[chain.length - 1] as any;
     }
 
@@ -160,7 +186,7 @@ export default class DateTree<T = any> {
      */
     async next(date?: DateParsable): Promise<[IGunChainReference<T> | undefined, Moment | undefined]> {
         let it = this.iterate({
-            start: date && moment(date) || undefined,
+            start: date && parseDate(date) || undefined,
             startInclusive: false,
             endInclusive: true,
         });
@@ -186,7 +212,7 @@ export default class DateTree<T = any> {
      */
     async previous(date?: Moment): Promise<[IGunChainReference<T> | undefined, Moment | undefined]> {
         let it = this.iterate({
-            end: date && moment(date) || undefined,
+            end: date && parseDate(date) || undefined,
             startInclusive: true,
             endInclusive: false,
             reverse: true,
@@ -344,7 +370,7 @@ export default class DateTree<T = any> {
     }
 
     static getDateComponents(date: DateParsable, resolution: DateUnit): DateComponents {
-        let m = moment(date);
+        let m = parseDate(date);
         if (!this.isResolution(resolution)) {
             throw new Error('Invalid graph date resolution: ' + resolution);
         }
@@ -359,7 +385,7 @@ export default class DateTree<T = any> {
     }
 
     static getDateComponent(date: DateParsable, unit: DateUnit): number {
-        let m = moment(date);
+        let m = parseDate(date);
         let val = m.get(nativeDateUnit(unit));
         return graphDateValue(val, unit);
     }
@@ -445,8 +471,8 @@ export default class DateTree<T = any> {
      * @param end End date (exclusive)
      */
     static * iterateDates(start: DateParsable, end: DateParsable, resolution: DateUnit): Generator<Moment> {
-        let mStart = moment(start).startOf(resolution);
-        let mEnd = moment(end).startOf(resolution);
+        let mStart = parseDate(start).startOf(resolution);
+        let mEnd = parseDate(end).startOf(resolution);
         let date = mStart;
         while (date.isBefore(mEnd)) {
             yield date;
@@ -459,6 +485,10 @@ export default class DateTree<T = any> {
         return ALL_DATE_UNITS.indexOf(resolution as DateUnit) >= 0;
     }
 }
+
+const parseDate = (date: DateParsable): Moment => {
+    return moment.utc(date);
+};
 
 const nativeDateUnit = (res: DateUnit): moment.unitOfTime.All => {
     if (res === 'day') {
