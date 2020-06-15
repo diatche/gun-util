@@ -2,8 +2,8 @@
   "name": "gun-util",
   "version": "0.0.2",
   "description": "Convenience and utility methods for GunDB",
-  "main": "dist/index.cjs.js",
-  "module": "dist/index.es.js",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
   "browser": "dist/index.umd.js",
   "files": [
     "dist"
@@ -15,7 +15,7 @@
     "gun": "cd node_modules/gun && npm start",
     "build": "rollup -c",
     "watch": "rollup -c -w",
-    "prepublishOnly": "rollup -c"
+    "prepack": "rm -R dist 2> /dev/null; rollup -c"
   },
   "repository": {
     "type": "git",

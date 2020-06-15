@@ -1,7 +1,5 @@
 import { IGunChainReference } from "gun/types/chain";
 
-require('gun/lib/then');
-
 /** Iterate over records once. */
 export async function * iterate<T = any>(ref: IGunChainReference<T[] | Record<any, T>>): AsyncGenerator<T> {
     // Get list of refs
