@@ -1,6 +1,6 @@
 import GunUser from '../src/user';
 import { IGunChainReference } from 'gun/types/chain';
-import { TEST_GUN_OPTIONS } from '../src/gun';
+import { TEST_GUN_OPTIONS } from '../src/const';
 import { InvalidCredentials, UserExists, AuthError } from '../src/errors';
 import Gun from 'gun';
 
@@ -19,7 +19,6 @@ describe('User', () => {
     })
 
     afterAll(() => {
-        gun.off();
         (gun as any) = undefined;
     });
 
