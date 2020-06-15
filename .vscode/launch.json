@@ -5,6 +5,15 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Debug Current File",
+            "request": "launch",
+            "args": [
+                "${relativeFile}",
+            ],
+            "type": "node"
+        },
+
+        {
             "type": "node",
             "request": "launch",
             "name": "Jest Current File",

@@ -2,14 +2,20 @@
   "name": "gun-util",
   "version": "0.0.2",
   "description": "Convenience and utility methods for GunDB",
-  "main": "dist/index.js",
+  "main": "dist/index.cjs.js",
+  "module": "dist/index.es.js",
+  "browser": "dist/index.umd.js",
+  "files": [
+    "dist"
+  ],
   "types": "dist/index.d.ts",
-  "type": "module",
   "scripts": {
     "test": "jest",
     "coverage": "jest --coverage",
     "gun": "cd node_modules/gun && npm start",
-    "prepare": "tsc"
+    "build": "rollup -c",
+    "watch": "rollup -c -w",
+    "prepublishOnly": "rollup -c"
   },
   "repository": {
     "type": "git",
@@ -27,14 +33,17 @@
     "utilities"
   ],
   "license": "MIT",
-  "dependencies": {
-    "gun": "^0.2020.520"
+  "peerDependencies": {
+    "gun": ">=0.2020.520"
   },
   "devDependencies": {
     "@types/jest": "^25.2.3",
     "@types/lodash": "^4.14.155",
+    "gun": ">=0.2020.520",
     "jest": "^26.0.1",
     "lodash": "^4.17.15",
+    "rollup": "^2.16.1",
+    "rollup-plugin-typescript2": "^0.27.1",
     "ts-jest": "^26.1.0",
     "typescript": "^3.9.3"
   }
