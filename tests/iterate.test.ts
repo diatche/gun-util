@@ -21,6 +21,7 @@ interface RunState {
     strings: {
         [key: string]: string
     };
+    empty: any;
 }
 
 interface UserState {
@@ -59,14 +60,12 @@ describe('iterate #', () => {
             let stringsRef = runRef.get('strings');
             
             let names = ['bar', 'foo', 'gaz'];
-            let expectedItems: string[] = [];
             for (let name of names) {
-                expectedItems.push(name);
                 stringsRef.get(name).put(name + '1');
             }
     
             let its = await iterateAll(iterateKeys(stringsRef));
-            expect(its).toEqual(expectedItems);
+            expect(its).toEqual(names);
         });
 
         it('should iterate and filter in natural direction', async () => {
@@ -173,6 +172,19 @@ describe('iterate #', () => {
             delete opts.endInclusive;
             let itsDefault = await iterateAll(iterateKeys(stringsRef, opts));
             expect(itsDefault).toEqual(itsIncEx);
+        });
+
+        it('should yield nothing on an empty node', async () => {
+            let ref = runRef.get('empty');
+            let vals = await iterateAll(iterateKeys(ref));
+            expect(vals).toEqual([]);
+        });
+
+        it('should yield nothing on a nulled node', async () => {
+            let ref = runRef.get('empty');
+            await ref.put(null as never).then!();
+            let vals = await iterateAll(iterateKeys(ref));
+            expect(vals).toEqual([]);
         });
     });
 

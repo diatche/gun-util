@@ -1,8 +1,7 @@
-import Gun from 'gun';
 import { IGunChainReference } from "gun/types/chain";
 import _ from 'lodash';
 import moment, { Moment } from 'moment';
-import { IterateOptions, iterateKeys } from "./iterate";
+import { IterateOptions, iterateRefs } from "./iterate";
 import { AckCallback } from "gun/types/types";
 
 export type DateUnit = 'year' | 'month' | 'day' | 'hour' | 'minute' | 'second' | 'millisecond';
@@ -373,8 +372,7 @@ export default class DateTree<T = any> {
         ref: IGunChainReference,
         opts: IterateOptions,
     ): AsyncGenerator<[IGunChainReference<T>, number]> {
-        for await (let key of iterateKeys(ref, opts)) {
-            let innerRef = ref.get(key);
+        for await (let [innerRef, key] of iterateRefs(ref, opts)) {
             let val = DateTree.decodeDateComponent(key);
             yield [innerRef as any, val];
         }
