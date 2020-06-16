@@ -82,6 +82,18 @@ tree.get('2020-01-16 05:45').put({ event: 'earlybird' });
 })();
 ```
 
+Filtering by date range and reverse iteration is possible using options:
+
+```javascript
+tree.iterate({
+    start: '2020-01-01',
+    end: '2020-02-01',
+    startInclusive: true,
+    endInclusive: false,
+    reverse: true
+})
+```
+
 **Watch for changes:**
 
 Let's say we want to listen to changes to a blog described
