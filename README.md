@@ -2,6 +2,8 @@
 
 Convenience and utility methods for [GunDB](https://github.com/amark/gun).
 
+*Note that this package is in early stages of development and there may be breaking changes within semantically compatible versions.*
+
 ## Installation
 
 Install using yarn with `yarn add gun-util` or npm `npm install gun-util`.
@@ -26,6 +28,10 @@ Example (up to hours):
    /  \          /  \
   ..  ..        ..  .. (hour)
 ```
+
+**Why not just use a hash table?**
+
+Having large nodes is discouraged in a graph database like Gun. If you need to store large lists or tables of data, you need to break them up into smaller nodes to ease synchronization between peers.
 
 #### Usage
 

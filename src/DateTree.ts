@@ -1,8 +1,7 @@
-import Gun from 'gun';
 import { IGunChainReference } from "gun/types/chain";
 import _ from 'lodash';
 import moment, { Moment } from 'moment';
-import { IterateOptions, iterateKeys } from "./iterate";
+import { IterateOptions, iterateRefs } from "./iterate";
 import { AckCallback } from "gun/types/types";
 
 export type DateUnit = 'year' | 'month' | 'day' | 'hour' | 'minute' | 'second' | 'millisecond';
@@ -35,6 +34,12 @@ export type DateIterateOptions = Omit<IterateOptions, 'start' | 'end'> & {
  * Efficiently distributes and stores data in a tree with nodes using date
  * components as keys up to a specified resolution.
  * The root of the tree is specified as a Gun node reference.
+ * 
+ * **Why not just use a hash table?**
+ * 
+ * Having large nodes is discouraged in a graph database like Gun.
+ * If you need to store large lists or tables of data, you need to break
+ * them up into smaller nodes to ease synchronization between peers.
  */
 export default class DateTree<T = any> {
     root: IGunChainReference;
@@ -373,8 +378,7 @@ export default class DateTree<T = any> {
         ref: IGunChainReference,
         opts: IterateOptions,
     ): AsyncGenerator<[IGunChainReference<T>, number]> {
-        for await (let key of iterateKeys(ref, opts)) {
-            let innerRef = ref.get(key);
+        for await (let [innerRef, key] of iterateRefs(ref, opts)) {
             let val = DateTree.decodeDateComponent(key);
             yield [innerRef as any, val];
         }
