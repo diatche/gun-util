@@ -34,6 +34,12 @@ export type DateIterateOptions = Omit<IterateOptions, 'start' | 'end'> & {
  * Efficiently distributes and stores data in a tree with nodes using date
  * components as keys up to a specified resolution.
  * The root of the tree is specified as a Gun node reference.
+ * 
+ * **Why not just use a hash table?**
+ * 
+ * Having large nodes is discouraged in a graph database like Gun.
+ * If you need to store large lists or tables of data, you need to break
+ * them up into smaller nodes to ease synchronization between peers.
  */
 export default class DateTree<T = any> {
     root: IGunChainReference;
