@@ -14,9 +14,9 @@ Install using yarn with `yarn add gun-util` or npm `npm install gun-util`.
 
 **Table of Contents:**
 
-1. [DateTree](###DateTree)
-2. [Encryption](###Encryption)
-3. [GunUser](###GunUser)
+1. [DateTree](#DateTree)
+2. [Encryption](#Encryption)
+3. [GunUser](#GunUser)
 
 ### DateTree
 
@@ -64,10 +64,14 @@ treeRoot.get('2020').get('08').get('23').put({ event: 'of a lifetime' });
 **Getting latest data:**
 
 ```javascript
-tree.get(new Date()).put('insider info');
+await tree.get(new Date()).put({ event: 'insider info' }).then();
 let [latestRef, date] = await tree.latest();
-console.log(`Fetching latest data on ${date.toISOString()}...`);
-console.log(await latestRef.then())
+console.log(`Fetching latest event on ${date.toISOString()}...`);
+console.log('event: ' + (await latestRef.then()).event);
+
+// Output:
+// Fetching latest event on 2020-06-18T00:00:00.000Z...
+// event: insider info
 ```
 
 **Iterating through date references:**
