@@ -2,6 +2,10 @@ import Gun from 'gun';
 import _ from 'lodash';
 import { IGunCryptoKeyPair } from 'gun/types/types';
 
+if (!Gun.SEA?.pair) {
+    console.warn('SEA encryption not available');
+}
+
 export const SEA = Gun.SEA;
 
 interface CryptOptionsBase {

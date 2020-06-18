@@ -3,7 +3,7 @@ import { DateTree } from '../dist/index.mjs';
 import moment from 'moment';
 
 let gun = Gun();
-let treeRoot = gun.get('tree');
+let treeRoot = gun.get('tree-stress');
 let resolution = 'day'
 let tree = new DateTree(treeRoot, resolution);
 

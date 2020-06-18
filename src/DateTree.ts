@@ -452,6 +452,7 @@ export default class DateTree<T = any> {
     }
 
     static decodeDateComponent(key: string): number {
+        // TODO: validate key in case there is unexpected data in the tree
         return Math.round(parseFloat(key));
     }
 

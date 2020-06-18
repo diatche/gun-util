@@ -61,7 +61,7 @@ export async function * iterateRecord<V = any, T = Record<any, V>>(
         return;
     }
     if (typeof obj !== 'object') {
-        throw new Error(`Cannot iterate keys of non-object record "${obj}`);
+        throw new Error(`Cannot iterate keys of non-object record "${obj}" at key "${(ref as any)._?.get}"`);
     }
     // Remove meta
     obj = _.omit(obj, '_');
