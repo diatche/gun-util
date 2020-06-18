@@ -2,7 +2,6 @@ import { IGunChainReference } from "gun/types/chain";
 import { TEST_GUN_OPTIONS } from "../src/const";
 import Gun from "gun";
 import { DateTree, DateComponents } from "../src";
-import { gunLogOnceFix } from "../src/temp";
 import moment from "moment";
 import _ from "lodash";
 import { v4 as uuidv4 } from 'uuid';

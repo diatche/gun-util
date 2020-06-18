@@ -2,12 +2,6 @@ import Gun from 'gun';
 import _ from 'lodash';
 import { IGunCryptoKeyPair } from 'gun/types/types';
 
-if (!Gun.SEA?.pair) {
-    console.warn('SEA encryption not available');
-}
-
-export const SEA = Gun.SEA;
-
 interface CryptOptionsBase {
     pair?: IGunCryptoKeyPair,
     secret?: any,
@@ -95,7 +89,7 @@ export async function _crypt(
         throw new Error('Either pair or secret is required');
     }
     if (!secret && epub) {
-        secret = await (SEA as any).secret(epub, pair || secret);
+        secret = await (Gun.SEA as any).secret(epub, pair || secret);
         if (typeof secret === 'undefined') {
             throw _getSEAError('Could not create secret');
         }
@@ -166,12 +160,12 @@ const _encryptValue = async (
         // Already encrypted
         return value;
     }
-    let data: string | undefined = await SEA.encrypt(value, secret);
+    let data: string | undefined = await Gun.SEA.encrypt(value, secret);
     if (typeof data === 'undefined') {
         throw _getSEAError('Could not encrypt');
     }
     if (signed) {
-        data = await SEA.sign(data, secret);
+        data = await Gun.SEA.sign(data, secret);
         if (typeof data === 'undefined') {
             throw _getSEAError('Could not sign');
         }
@@ -192,12 +186,12 @@ const _decryptValue = async (
     }
     let msg: any = data;
     if (signed) {
-        msg = await SEA.verify(data, secret);
+        msg = await Gun.SEA.verify(data, secret);
         if (typeof msg === 'undefined') {
             throw _getSEAError('Could not verify');
         }
     }
-    let value: any = await SEA.decrypt(msg, secret);
+    let value: any = await Gun.SEA.decrypt(msg, secret);
     if (typeof value === 'undefined') {
         throw _getSEAError('Could not decrypt');
     }
@@ -205,7 +199,7 @@ const _decryptValue = async (
 };
 
 const _getSEAError = (_default?: Error | string): Error | undefined => {
-    let err = SEA.err || _default;
+    let err = Gun.SEA.err || _default;
     if (!err) {
         return undefined;
     }

@@ -1,11 +1,5 @@
 import Gun from 'gun';
-import { 
-    gunLogOnceFix,
-    iterateItems
-} from '../dist/index.mjs';
-
-// In case Gun.log.once is undefined
-gunLogOnceFix(Gun);
+import { iterateItems } from '../dist/index.mjs';
 
 let gun = Gun();
 let list = gun.get('list');
