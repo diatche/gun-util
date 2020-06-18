@@ -59,20 +59,6 @@ describe('encryption', () => {
             expect(await decrypt(enc, { pair: GunUser.pair(gun) })).toMatchObject(orig);
         });
 
-        it('should not be able to read other users data', async () => {
-            let enc = await encrypt('a@a.com', { pair: GunUser.pair(gun) });
-            GunUser.logout(gun);
-            await GunUser.create({ alias: runId, pass: 'bar' }, gun);
-            
-            let error: Error | undefined;
-            try {
-                await decrypt(enc, { pair: GunUser.pair(gun) });
-            } catch (e) {
-                error = e;
-            }
-            expect(error).toBeInstanceOf(Error);
-        });
-
         it('should encrypt/decrypt a value for another user', async () => {
             // Create all users and get epubs
             let creds = ['1', '2', '3'].map(x => ({ alias: runId + x, pass: 'bar' }));

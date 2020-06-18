@@ -1,5 +1,4 @@
 import { SEA } from 'gun';
-import { IGunChainReference } from 'gun/types/chain';
 import _ from 'lodash';
 import { IGunCryptoKeyPair } from 'gun/types/types';
 
