@@ -381,7 +381,7 @@ describe('DateTree #', () => {
         it('should return the latest date', async () => {
             let [latest, latestDate] = await tree.latest();
             expect(latest).toBeTruthy();
-            expect(latestDate?.format('YYYY-MM-DD')).toBe(nowMoment.format('YYYY-MM-DD'));
+            expect(latestDate?.format('YYYY-MM-DD')).toBe(nowMoment.utc().format('YYYY-MM-DD'));
         });
     });
 
