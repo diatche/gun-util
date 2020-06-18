@@ -4,7 +4,7 @@ import { IGunChainReference } from 'gun/types/chain';
 import _ from 'lodash';
 import Gun from 'gun';
 import { v4 as uuidv4 } from 'uuid';
-import { GunUserCredentials, GunUser } from '../src';
+import { GunUser } from '../src';
 
 interface State {
     [key: string]: UserState;

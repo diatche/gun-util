@@ -1,6 +1,8 @@
-import { SEA } from 'gun';
+import Gun from 'gun';
 import _ from 'lodash';
 import { IGunCryptoKeyPair } from 'gun/types/types';
+
+export const SEA = Gun.SEA;
 
 interface CryptOptionsBase {
     pair?: IGunCryptoKeyPair,
@@ -32,7 +34,8 @@ export type DecryptOptions = DecryptOptionsBase & CryptOptions;
  * If the value or nested value is already encrypted, does not re-encrypt
  * that value.
  * 
- * Specifying a recipient's epub key will allow that user to decrypt the value.
+ * Specifying a recipient's epub key will only allow that user to decrypt the value,
+ * with Elliptic-curve Diffie–Hellman based encryption.
  * 
  * @param value 
  * @param opts
