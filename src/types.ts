@@ -4,7 +4,7 @@ import * as GunTypes from "gun/types/types";
 /** { '#': 'id' } */
 export interface IGunRef extends GunTypes.IGunRecordNodeRawBase {}
 
-export interface IGunUserRecordMeta<T> extends GunTypes.IGunRecordNodeRawExtra<T> {
+export interface IGunUserRefMeta {
     /**
      * Having this property means that the user is
      * logged in.
@@ -12,8 +12,8 @@ export interface IGunUserRecordMeta<T> extends GunTypes.IGunRecordNodeRawExtra<T
     sea?: GunTypes.IGunCryptoKeyPair
 }
 
-export interface IGunUserRecord<T=any> extends GunTypes.IGunRecordNodeRaw<T> {
-    _: IGunUserRecordMeta<T>;
+export interface IGunUserRef<T=any> extends IGunChainReference<T> {
+    _: IGunUserRefMeta;
 }
 
 export interface IGunQuery {
