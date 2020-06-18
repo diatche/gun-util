@@ -4,14 +4,13 @@ import { IGunChainReference } from 'gun/types/chain';
 import _ from 'lodash';
 import Gun from 'gun';
 import { v4 as uuidv4 } from 'uuid';
-import { GunUserCredentials, GunUser } from '../src';
 
 interface Item {
     name: string;
 }
 
 interface State {
-    [key: string]: UserState | RunState;
+    [key: string]: RunState;
 }
 
 interface RunState {
@@ -24,16 +23,8 @@ interface RunState {
     empty: any;
 }
 
-interface UserState {
-    privateItems: {
-        [key: string]: Item
-    };
-}
-
 let gun: IGunChainReference<State>;
 let runRef: IGunChainReference<RunState>;
-let userRef: IGunChainReference<UserState>;
-let creds: GunUserCredentials;
 let runId: string;
 
 describe('iterate #', () => {
@@ -47,7 +38,6 @@ describe('iterate #', () => {
         // Use a clean node on every run
         runId = uuidv4();
         runRef = gun.get(runId) as any;
-        creds = { alias: runId, pass: 'bar' };
     });
 
     afterAll(() => {
@@ -213,25 +203,6 @@ describe('iterate #', () => {
             for (let name of names) {
                 let item = { name };
                 itemsRef.get(name).put(item as never);
-                expectedItems.push(item);
-            }
-    
-            let its = await iterateAll(iterateValues(itemsRef));
-            expect(its.map(x => _.omit(x, '_'))).toEqual(expectedItems);
-        });
-    
-        it('should iterate all encrypted records once', async () => {
-            // Create user
-            let pub = await GunUser.create(creds, gun);
-            userRef = gun.get(pub) as any;
-    
-            let itemsRef = userRef.get('privateItems');
-            
-            let names = ['bar', 'foo', 'gaz'];
-            let expectedItems: Item[] = [];
-            for (let name of names) {
-                let item = { name };
-                itemsRef.get(name).put(item as any);
                 expectedItems.push(item);
             }
     
