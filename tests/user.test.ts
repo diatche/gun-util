@@ -3,6 +3,7 @@ import { IGunChainReference } from 'gun/types/chain';
 import { TEST_GUN_OPTIONS } from '../src/const';
 import { InvalidCredentials, UserExists, AuthError } from '../src/errors';
 import Gun from 'gun';
+import { v4 as uuidv4 } from 'uuid';
 
 let gun: IGunChainReference;
 const creds = { alias: 'foo', pass: 'bar' };
@@ -44,12 +45,13 @@ describe('User', () => {
         it('should not create users in parallel', async () => {
             let errors: Error[] = [];
             let usersAndErrors = await Promise.all([
-                GunUser.create({ alias: 'abc', pass: 'bar' }, gun)
+                GunUser.create({ alias: uuidv4(), pass: 'bar' }, gun)
                     .catch(error => errors.push(error)),
-                GunUser.create({ alias: 'def', pass: 'bar' }, gun)
+                GunUser.create({ alias: uuidv4(), pass: 'bar' }, gun)
                     .catch(error => errors.push(error)),
             ]);
             let users = usersAndErrors.filter(u => typeof u === 'string');
+            console.log('errors: ' + JSON.stringify(errors.map(e => e + ''), null, 2));
             expect(users.length).toBe(1);
             expect(errors.length).toBe(1);
             expect(errors[0]).toBeInstanceOf(AuthError);
