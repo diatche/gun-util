@@ -365,6 +365,26 @@ describe('DateTree #', () => {
         });
     });
 
+    describe('latest with native date', () => {
+
+        let now = new Date();
+        let nowMoment = moment(now);
+
+        beforeEach(async () => {
+            // Add data to graph
+            await Promise.all([
+                tree.get('2012-11-30').put('a' as never).then!(),
+                tree.get(now).put('b' as never).then!()
+            ]);
+        });
+
+        it('should return the latest date', async () => {
+            let [latest, latestDate] = await tree.latest();
+            expect(latest).toBeTruthy();
+            expect(latestDate?.format('YYYY-MM-DD')).toBe(nowMoment.format('YYYY-MM-DD'));
+        });
+    });
+
     describe('earliest', () => {
 
         let data = {

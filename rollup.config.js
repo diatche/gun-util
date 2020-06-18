@@ -25,6 +25,11 @@ export default {
     plugins: [
         typescript({
             typescript: require('typescript'),
+            tsconfigOverride: {
+                compilerOptions: {
+                    module: 'ESNext'
+                }
+            }
         }),
     ],
 };

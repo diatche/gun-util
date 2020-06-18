@@ -16,7 +16,7 @@ describe('User', () => {
 
     afterEach(() => {
         GunUser.logout(gun);
-    })
+    });
 
     afterAll(() => {
         (gun as any) = undefined;

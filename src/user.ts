@@ -1,5 +1,6 @@
 import { IGunChainReference } from "gun/types/chain";
 import { InvalidCredentials, GunError, AuthError, UserExists, TimeoutError } from "./errors";
+import { IGunCryptoKeyPair } from "gun/types/types";
 
 const LOGIN_CHECK_DELAY = 500;
 
@@ -14,33 +15,38 @@ export interface GunUserCredentials {
 export default class GunUser {
     static _authOp = false;
 
-    static userRef(gun: IGunChainReference) {
-        return gun.user();
-    }
-
     static logout(gun: IGunChainReference) {
-        if (!this.publicKey(gun)) {
+        if (!this.pub(gun)) {
             return;
         }
-        let userRef = this.userRef(gun);
+        let userRef = gun.user();
         userRef.leave();
-        if (!this.publicKey(gun)) {
+        if (!this.pub(gun)) {
         } else {
             throw new AuthError('Failed to log out');
         }
     }
 
     static current(gun: IGunChainReference): IGunChainReference | undefined {
-        let publicKey = this.publicKey(gun);
-        if (!publicKey) {
-            return undefined;
-        }
-        return gun.user(publicKey);
+        let pub = this.pub(gun);
+        return !!pub ? gun.user(pub) : undefined;
     }
 
-    static publicKey(gun: IGunChainReference): string {
-        let userRef = this.userRef(gun) as any;
-        return userRef._.sea && userRef._.sea.pub || '';
+    /**
+     * The current user's public key.
+     * @param gun 
+     */
+    static pub(gun: IGunChainReference): string {
+        return (this.pair(gun) as any || {}).pub || '';
+    }
+
+    /**
+     * The current user's key pair.
+     * @param gun 
+     */
+    static pair(gun: IGunChainReference): IGunCryptoKeyPair {
+        let userRef = gun.user() as any;
+        return userRef._.sea;
     }
 
     static async login(
@@ -77,8 +83,8 @@ export default class GunUser {
     ): Promise<void> {
         return this._authBlock(async () => {
             return new Promise((resolve, reject) => {
-                this.userRef(gun).delete(alias, pass, ack => {
-                    if (!this.publicKey(gun)) {
+                gun.user().delete(alias, pass, ack => {
+                    if (!this.pub(gun)) {
                         resolve();
                     } else {
                         reject(new GunError('Failed to delete user'));
@@ -99,7 +105,7 @@ export default class GunUser {
             // Check for login ahead of time
             let timer = setTimeout(() => {
                 if (!resolveOnce) return;
-                let pub = this.publicKey(gun);
+                let pub = this.pub(gun);
                 if (pub) {
                     // Instant login
                     resolveOnce(pub);
@@ -109,12 +115,12 @@ export default class GunUser {
             }, LOGIN_CHECK_DELAY);
 
             // Begin login
-            let ref = this.userRef(gun).auth(alias, pass, ack => {
+            let ref = gun.user().auth(alias, pass, ack => {
                 if (!resolveOnce || !rejectOnce) return;
 
                 if ('err' in ack) {
                     // Check for login anyway
-                    let pub = this.publicKey(gun);
+                    let pub = this.pub(gun);
                     if (pub) {
                         // Actually logged in
                         resolveOnce(pub);
@@ -147,17 +153,17 @@ export default class GunUser {
                 options.change = newPass;
             }
 
-            let previousPub = this.publicKey(gun);
+            let previousPub = this.pub(gun);
             if (!newPass && previousPub) {
                 throw new GunError('Should not be logged in when creating a user');
             }
             
-            let ref = this.userRef(gun).create(alias, pass, ack => {
+            let ref = gun.user().create(alias, pass, ack => {
                 if (!resolveOnce || !rejectOnce) return;
 
                 if ('err' in ack) {
                     // Check for login anyway
-                    let pub = this.publicKey(gun);
+                    let pub = this.pub(gun);
                     if (pub !== previousPub) {
                         // Actually created user
                         resolveOnce(pub);

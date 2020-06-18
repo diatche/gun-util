@@ -12,6 +12,12 @@ Install using yarn with `yarn add gun-util` or npm `npm install gun-util`.
 
 ## Documentation
 
+**Table of Contents:**
+
+1. [DateTree](#DateTree)
+2. [Encryption](#Encryption)
+3. [GunUser](#GunUser)
+
 ### DateTree
 
 Efficiently distributes and stores data in a tree with nodes using date components as keys up
@@ -55,6 +61,19 @@ tree.get('2020-08-23').put({ event: 'of a lifetime' });
 treeRoot.get('2020').get('08').get('23').put({ event: 'of a lifetime' });
 ```
 
+**Getting latest data:**
+
+```javascript
+await tree.get(new Date()).put({ event: 'insider info' }).then();
+let [latestRef, date] = await tree.latest();
+console.log(`Fetching latest event on ${date.toISOString()}...`);
+console.log('event: ' + (await latestRef.then()).event);
+
+// Output:
+// Fetching latest event on 2020-06-18T00:00:00.000Z...
+// event: insider info
+```
+
 **Iterating through date references:**
 
 You can store data and iterate through only populated nodes without
@@ -80,6 +99,18 @@ tree.get('2020-01-16 05:45').put({ event: 'earlybird' });
     // Sun Aug 23 2015 23:45:00 GMT+0000 event: ultimate
     // Thu Jan 16 2020 05:45:00 GMT+0000 event: earlybird
 })();
+```
+
+Filtering by date range and reverse iteration is possible using options:
+
+```javascript
+tree.iterate({
+    start: '2020-01-01',
+    end: '2020-02-01',
+    startInclusive: true,
+    endInclusive: false,
+    reverse: true
+})
 ```
 
 **Watch for changes:**
@@ -139,6 +170,43 @@ we can call `unsub()` and resubscribe to a later date.
 **Other examples**
 
 Have a look at the examples folder.
+
+### Encryption
+
+Allows encrypting and decrypting values and objects for the logged in user
+or for another user (using their epub key).
+
+**Encrypting private data:**
+
+Only the user can decrypt the value.
+
+```javascript
+let pair = gun.user()._.sea;
+let enc = await encrypt('a@a.com', { pair });
+let dec = await decrypt(enc, { pair });
+assert(dec === 'a@a.com');
+```
+
+**Encrypting data for someone else:**
+
+Only the specified user can decrypt the value.
+
+```javascript
+let frodo = await SEA.pair();
+let gandalf = await SEA.pair();
+
+let enc = await encrypt({ whereami: 'shire' }, {
+    pair: frodo,
+    recipient: gandalf // Or { epub: gandalf.epub }
+});
+
+let dec = await decrypt(enc, {
+    pair: gandalf,
+    sender: frodo // Or { epub: frodo.epub }
+});
+
+assert(dec.whereami === 'shire');
+```
 
 ### GunUser
 
