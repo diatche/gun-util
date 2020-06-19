@@ -2,6 +2,8 @@
 
 Convenience and utility methods for [GunDB](https://github.com/amark/gun).
 
+![Node.js CI](https://github.com/diatche/gun-util/workflows/Node.js%20CI/badge.svg)
+
 *Note that this package is in early stages of development and there may be breaking changes within semantically compatible versions.*
 
 ## Installation

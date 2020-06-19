@@ -35,10 +35,6 @@ describe('encryption', () => {
     });
 
     afterAll(() => {
-        gun.opt({
-            ...TEST_GUN_OPTIONS,
-            multicast: false,
-        });
         (gun as any) = undefined;
     });
 
