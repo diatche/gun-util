@@ -11,6 +11,15 @@ export interface IterateOptions {
     reverse?: boolean;
 }
 
+export interface FastIterateOptions {
+    /**
+     * After this time interval (ms), no more
+     * data is returned. Defaults to Gun's default
+     * of 99 ms.
+     **/
+    wait?: number;
+}
+
 /**
  * Iterate over async iterator to the end and return
  * the collected values.
@@ -27,8 +36,83 @@ export async function iterateAll<T>(it: AsyncIterable<T>): Promise<T[]> {
 /**
  * Iterate over the inner keys of a record at a Gun node reference.
  * 
+ * Filtering can be done using [Gun's lexical wire spec](https://gun.eco/docs/RAD#lex).
+ * 
  * Note that keys are not guaranteed to be in order if there
  * is more than one connected peer.
+ * 
+ * @param ref Gun node reference
+ **/
+export async function * fastIterateRecord<V = any, T = Record<any, V>>(
+    ref: IGunChainReference<T>,
+    opts: FastIterateOptions = {},
+): AsyncGenerator<[V, string]> {
+    let isDone = false;
+    let error: any;
+    let batch: [V, string][] = [];
+    let resolver: (() => void) | undefined;
+    let nextBatchReady: Promise<void> | undefined;
+    let { wait } = opts;
+
+    let _resolve = () => {
+        let resolve = resolver;
+        resolver = undefined;
+        resolve && resolve();
+        nextBatchReady = undefined;
+    }
+
+    let onError = (e: any) => {
+        error = e;
+        isDone = true;
+        _resolve();
+    };
+    let onComplete = () => {
+        isDone = true;
+        _resolve();
+    };
+
+    ref.map().once((data, key) => {
+        batch.push([data as V, key]);
+        _resolve();
+    }, opts);
+
+    while (!isDone) {
+        // How does the generator break out of the loop early?
+        // Explanation: https://stackoverflow.com/a/43424286/328356
+        while (batch.length !== 0) {
+            yield batch.shift()!;
+        }
+        if (!nextBatchReady) {
+            nextBatchReady = new Promise((resolve, reject) => {
+                if (isDone) {
+                    resolve();
+                } else {
+                    resolver = resolve;
+                }
+            });
+        }
+        // Wait for next value promise
+        await nextBatchReady;
+        while (batch.length !== 0) {
+            yield batch.shift()!;
+        }
+    }
+
+    if (error) {
+        throw error;
+    } else {
+        while (batch.length !== 0) {
+            yield batch.shift()!;
+        }
+    }
+}
+
+/**
+ * Iterate over the inner keys of a record at a Gun node reference.
+ * 
+ * Note that keys are guaranteed to be in order, but if a peer
+ * fails to reply within the timeout period, the item [value, key] will
+ * skipped. A second pass is necessary to get these skipped items.
  * 
  * @param ref Gun node reference
  **/
