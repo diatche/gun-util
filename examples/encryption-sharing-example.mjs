@@ -1,8 +1,10 @@
+import Gun from 'gun';
 import {
     encrypt,
     decrypt,
-    SEA,
 } from '../dist/index.mjs';
+
+const SEA = Gun.SEA;
 
 (async () => {
     let frodo = await SEA.pair();

@@ -12,7 +12,7 @@ list.put({ c: 'gun' });
     for await (let [key, value] of iterateItems(list)) {
         console.log(key + ': ' + value);
     }
-})();
+})().then(() => process.exit(0));
 
 // Output:
 // foo: a

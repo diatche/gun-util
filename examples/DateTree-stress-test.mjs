@@ -41,6 +41,6 @@ while (date.isBefore(end)) {
     // ...
     // 2020-06-16T05:39:23.592Z: data on Fri Jan 01 2010 00:00:00 GMT+0000: gsvka
     // Fetched 3652 records in 20 s at 182.6 records/s
-})();
+})().then(() => process.exit(0));
 
 // Delete your radata folder (Gun's local storage) if you see unexpected logs

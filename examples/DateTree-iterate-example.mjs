@@ -21,7 +21,7 @@ tree.get('2020-01-16 05:45').put({ event: 'earlybird' });
     // Sat Jan 21 1995 14:02:00 GMT+0000 event: good times
     // Sun Aug 23 2015 23:45:00 GMT+0000 event: ultimate
     // Thu Jan 16 2020 05:45:00 GMT+0000 event: earlybird
-})();
+})().then(() => process.exit(0));
 
 // See also ./DateTree-stress-test.mjs
 

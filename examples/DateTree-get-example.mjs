@@ -20,6 +20,6 @@ tree.get('2020-08-23').put({ event: 'of a lifetime' });
     console.log('event: ' + event);
     // Output:
     // event: of a lifetime
-})();
+})().then(() => process.exit(0));
 
 // Delete your radata folder (Gun's local storage) if you see unexpected logs

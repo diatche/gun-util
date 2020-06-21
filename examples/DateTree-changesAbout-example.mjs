@@ -57,4 +57,7 @@ let unsub = tree.changesAbout('2019-12-31 23:54', dateComponents => {
 tree.get('2019-12-31 23:59').put({ blog: '3! 2! 1!' });
 tree.get('2020-01-01 00:12').put({ blog: 'Happy NY!' });
 
+// Force stop Gun worker
+setTimeout(() => process.exit(0), 1000);
+
 // Delete your radata folder (Gun's local storage) if you see unexpected logs
