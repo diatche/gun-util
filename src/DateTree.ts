@@ -3,6 +3,7 @@ import _ from 'lodash';
 import moment, { Moment } from 'moment';
 import { IterateOptions, iterateRefs } from "./iterate";
 import { AckCallback } from "gun/types/types";
+import { rangeWithFilter, filterWithRange } from "./filter";
 
 export type DateUnit = 'year' | 'month' | 'day' | 'hour' | 'minute' | 'second' | 'millisecond';
 
@@ -25,10 +26,7 @@ export type DateComponents = {
     [K in DateUnit]?: number;
 }
 
-export type DateIterateOptions = Omit<IterateOptions, 'start' | 'end'> & {
-    start?: DateParsable;
-    end?: DateParsable;
-};
+export interface DateIterateOptions extends IterateOptions<DateParsable> {}
 
 /**
  * Efficiently distributes and stores data in a tree with nodes using date
@@ -238,9 +236,7 @@ export default class DateTree<T = any> {
      */
     async next(date?: DateParsable): Promise<[IGunChainReference<T> | undefined, Moment | undefined]> {
         let it = this.iterate({
-            start: date && parseDate(date) || undefined,
-            startInclusive: false,
-            endInclusive: true,
+            gt: date && parseDate(date) || undefined,
         });
         for await (let [ref, refDate] of it) {
             if (date) {
@@ -264,9 +260,7 @@ export default class DateTree<T = any> {
      */
     async previous(date?: Moment): Promise<[IGunChainReference<T> | undefined, Moment | undefined]> {
         let it = this.iterate({
-            end: date && parseDate(date) || undefined,
-            startInclusive: true,
-            endInclusive: false,
+            lt: date && parseDate(date) || undefined,
             reverse: true,
         });
         for await (let [ref, refDate] of it) {
@@ -289,13 +283,14 @@ export default class DateTree<T = any> {
      * @param param0 
      */
     async * iterate(opts: DateIterateOptions = {}): AsyncGenerator<[IGunChainReference<T>, Moment]> {
+        let range = rangeWithFilter(opts);
         let {
             start,
             end,
-            startInclusive = true,
-            endInclusive = false,
-            ...otherOpts
-        } = opts;
+            startClosed,
+            endClosed,
+        } = range;
+        let { reverse } = opts;
         let ref: IGunChainReference | undefined = this.root;
         let startComps = (start && DateTree.getDateComponents(start, this.resolution) || {}) as Partial<DateComponentsUnsafe>;
         let endComps = (end && DateTree.getDateComponents(end, this.resolution) || {}) as Partial<DateComponentsUnsafe>;
@@ -316,16 +311,19 @@ export default class DateTree<T = any> {
                 unit
             );
             let atLeaf = unitIndex === unitsLen - 1;
-            let unitStartInclusive = startInclusive || !atLeaf;
-            let unitEndInclusive = endInclusive || !atLeaf;
+            let unitStartInclusive = startClosed || !atLeaf;
+            let unitEndInclusive = endClosed || !atLeaf;
             if (ref) {
                 // Queue another node for iteration
-                it = this._iterateRef(ref, {
-                    ...otherOpts,
+                let filter = filterWithRange({
                     start: DateTree.encodeDateComponent(startVal, unit),
                     end: DateTree.encodeDateComponent(endVal, unit),
-                    startInclusive: unitStartInclusive,
-                    endInclusive: unitEndInclusive,
+                    startClosed: unitStartInclusive,
+                    endClosed: unitEndInclusive,
+                });
+                it = this._iterateRef(ref, {
+                    ...filter,
+                    reverse,
                 });
                 itStack.unshift(it);
                 ref = undefined;

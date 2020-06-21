@@ -1,18 +1,16 @@
 import { IGunChainReference } from "gun/types/chain";
 import _ from "lodash";
+import {
+    Filter,
+    rangeWithFilter,
+    isValueRangeEmpty,
+    filterKey,
+    filteredIndexRange,
+} from "./filter";
 
 const WAIT_DEFAULT = 99;
 
-export interface FilterOptions {
-    start?: string;
-    end?: string;
-    /** True by default. */
-    startInclusive?: boolean;
-    /** False by default. */
-    endInclusive?: boolean;
-}
-
-export interface ScanOptions extends FilterOptions {
+export interface ScanOptions<T=string> extends Filter<T> {
     /**
      * After this time interval (ms), no more
      * data is returned. Defaults to Gun's default
@@ -21,7 +19,7 @@ export interface ScanOptions extends FilterOptions {
     wait?: number;
 }
 
-export interface IterateOptions extends ScanOptions {
+export interface IterateOptions<T=string> extends ScanOptions<T> {
     reverse?: boolean;
 }
 
@@ -55,12 +53,17 @@ export async function * scanRecord<V = any, T = Record<any, V>>(
     opts: ScanOptions = {},
 ): AsyncGenerator<[V, string]> {
     let isDone = false;
-    let error: any;
+    let keysSeen = new Set<string>();
     let batch: [V, string][] = [];
     let resolver: (() => void) | undefined;
     let nextBatchReady: Promise<void> | undefined;
     let lastDataDate = new Date();
     let { wait = WAIT_DEFAULT } = opts;
+
+    let range = rangeWithFilter(opts);
+    if (isValueRangeEmpty(range)) {
+        return;
+    }
 
     let _resolve = () => {
         let resolve = resolver;
@@ -74,11 +77,19 @@ export async function * scanRecord<V = any, T = Record<any, V>>(
         _resolve();
     };
 
-    let sub = ref.map().once((data, key) => {
-        batch.push([data as V, key]);
+    // Use `on()` instead of `once()` to customize
+    // the waiting interval.
+    let sub = ref.map().on((data, key) => {
+        if (keysSeen.has(key)) {
+            return;
+        }
+        keysSeen.add(key);
         lastDataDate = new Date();
-        _resolve();
-    }, { wait });
+        if (filterKey(key, range)) {
+            batch.push([data as V, key]);
+            _resolve();
+        }
+    });
 
     if (!sub) {
         // There's nothing at this reference
@@ -90,16 +101,20 @@ export async function * scanRecord<V = any, T = Record<any, V>>(
         if (!timer) return;
         let now = new Date();
         if (now.valueOf() - lastDataDate.valueOf() > wait) {
+            // It's been to long since any new data, assume completed.
             clearInterval(timer);
             onComplete();
         }
     }, wait);
 
-    while (!isDone) {
+    while (!isDone || batch.length !== 0) {
         // How does the generator break out of the loop early?
         // Explanation: https://stackoverflow.com/a/43424286/328356
         while (batch.length !== 0) {
             yield batch.shift()!;
+        }
+        if (isDone) {
+            break;
         }
         if (!nextBatchReady) {
             nextBatchReady = new Promise((resolve, reject) => {
@@ -112,9 +127,6 @@ export async function * scanRecord<V = any, T = Record<any, V>>(
         }
         // Wait for next value promise
         await nextBatchReady;
-        while (batch.length !== 0) {
-            yield batch.shift()!;
-        }
     }
 
     // Clean up
@@ -122,14 +134,6 @@ export async function * scanRecord<V = any, T = Record<any, V>>(
     (sub as any) = undefined;
     clearInterval(timer);
     (timer as any) = undefined;
-
-    if (error) {
-        throw error;
-    } else {
-        while (batch.length !== 0) {
-            yield batch.shift()!;
-        }
-    }
 }
 
 /**
@@ -151,24 +155,14 @@ export async function * iterateRecord<V = any, T = Record<any, V>>(
     opts: IterateOptions = {},
 ): AsyncGenerator<[V, string]> {
     let {
-        start,
-        end,
-        startInclusive = true,
-        endInclusive = false,
         reverse = false,
         wait = WAIT_DEFAULT,
     } = opts;
 
-    if (typeof start !== 'undefined' && typeof end !== 'undefined') {
-        if (start === end && !(startInclusive && endInclusive)) {
-            return;
-        } else if (start > end) {
-            throw new Error('Start value must be less than end value');
-        }
+    let range = rangeWithFilter(opts);
+    if (isValueRangeEmpty(range)) {
+        return;
     }
-
-    // TODO: To avoid fetching too much data at once,
-    // use GUN's lexical wire spec to filter and or batch: https://gun.eco/docs/RAD
 
     // Get list of keys:
     // Prefer using `once` instead of `then` to allow
@@ -192,7 +186,7 @@ export async function * iterateRecord<V = any, T = Record<any, V>>(
     let keys = Object.keys(obj).sort();
 
     // Find iteration bounds
-    let [iStart, iEnd] = filteredKeyRange(keys, opts);
+    let [iStart, iEnd] = filteredIndexRange(keys, range);
     if (iStart >= iEnd) {
         return;
     }
@@ -291,86 +285,3 @@ export async function* iterateKeys(
         yield k;
     }
 }
-
-// export const filterKey = (key: string, opts: FilterOptions): boolean => {
-//     let {
-//         start,
-//         end,
-//         startInclusive = true,
-//         endInclusive = false,
-//     } = opts;
-
-//     if (typeof start !== 'undefined') {
-//         if (key < start) return false;
-
-//         iStart = _.sortedIndex(keys, start);
-//         let key = keys[iStart];
-//         if (key <= start && !startInclusive) {
-//             iStart += 1;
-//         }
-//     }
-//     // iEnd is inclusive here
-//     let iEnd = len - 1;
-//     if (typeof end !== 'undefined') {
-//         iEnd = _.sortedIndex(keys, end);
-//         let key = keys[iEnd];
-//         if (key >= end && !endInclusive) {
-//             iEnd -= 1;
-//         }
-//         iEnd = Math.min(iEnd, len - 1);
-//     }
-// };
-
-/**
- * Returns the filtered range of a set of keys
- * sorted in ascending lexical order.
- * 
- * @param keys 
- * @param opts 
- * @returns
- *  The start (inclusive) and end (exclusive) indexes of
- *  the keys matching the filter.
- */
-export const filteredKeyRange = (keys: string[], opts: FilterOptions): [number, number] => {
-    let len = keys.length;
-    if (len === 0) {
-        return [0, 0];
-    }
-    if (len === 1) {
-        if (filterKey(keys[0], opts)) {
-            return [0, 1]
-        } else {
-            return [0, 0];
-        }
-    }
-
-    let {
-        start,
-        end,
-        startInclusive = true,
-        endInclusive = false,
-    } = opts;
-
-    let iStart = 0;
-    if (typeof start !== 'undefined') {
-        iStart = _.sortedIndex(keys, start);
-        let key = keys[iStart];
-        if (key <= start && !startInclusive) {
-            iStart += 1;
-        }
-    }
-    // iEnd is inclusive here
-    let iEnd = len - 1;
-    if (typeof end !== 'undefined') {
-        iEnd = _.sortedIndex(keys, end);
-        let key = keys[iEnd];
-        if (key >= end && !endInclusive) {
-            iEnd -= 1;
-        }
-        iEnd = Math.min(iEnd, len - 1);
-    }
-    if (iStart > iEnd) {
-        return [0, 0];
-    }
-    return [iStart, iEnd + 1];
-};

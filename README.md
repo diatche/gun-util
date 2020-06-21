@@ -107,10 +107,8 @@ Filtering by date range and reverse iteration is possible using options:
 
 ```javascript
 tree.iterate({
-    start: '2020-01-01',
-    end: '2020-02-01',
-    startInclusive: true,
-    endInclusive: false,
+    gte: '2020-01-01',
+    lt: '2020-02-01',
     reverse: true
 })
 ```

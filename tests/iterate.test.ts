@@ -1,4 +1,10 @@
-import { iterateValues, iterateKeys, IterateOptions, iterateAll, iterateRecord, scanRecord } from '../src/iterate';
+import {
+    iterateValues,
+    iterateKeys,
+    IterateOptions,
+    iterateAll,
+    scanRecord,
+} from '../src/iterate';
 import { TEST_GUN_OPTIONS } from '../src/const';
 import { IGunChainReference } from 'gun/types/chain';
 import _ from 'lodash';
@@ -27,7 +33,7 @@ let gun: IGunChainReference<State>;
 let runRef: IGunChainReference<RunState>;
 let runId: string;
 
-describe('iterate #', () => {
+describe('iterate *', () => {
     jest.setTimeout(20000);
 
     beforeAll(() => {
@@ -90,58 +96,56 @@ describe('iterate #', () => {
 
         it('should iterate all keys once in natural direction', async () => {
             let stringsRef = runRef.get('strings');
-            
+
             let names = ['bar', 'foo', 'gaz'];
             for (let name of names) {
                 stringsRef.get(name).put(name + '1');
             }
-    
+
             let its = await iterateAll(iterateKeys(stringsRef));
             expect(its).toEqual(names);
         });
 
         it('should iterate and filter in natural direction', async () => {
             let opts: IterateOptions = {
-                start: 'foo',
-                end: 'gaz',
-                startInclusive: true,
-                endInclusive: true,
+                gte: 'foo',
+                lte: 'gaz',
             }
             let stringsRef = runRef.get('strings');
-            
+
             let names = ['bar', 'foo', 'fooB', 'gaz', 'gazB'];
             let expectedItems: string[] = [];
             for (let name of names) {
                 expectedItems.push(name);
                 stringsRef.get(name).put(name + '1');
             }
-    
+
             let itsIncInc = await iterateAll(iterateKeys(stringsRef, opts));
             expect(itsIncInc).toEqual(_.without(expectedItems, 'bar', 'gazB'));
 
             // Check start exclusive, end inclusive
-            opts.startInclusive = false;
-            opts.endInclusive = true;
+            opts = {
+                gt: 'foo',
+                lte: 'gaz',
+            }
             let itsExInc = await iterateAll(iterateKeys(stringsRef, opts));
             expect(itsExInc).toEqual(_.without(expectedItems, 'bar', 'foo', 'gazB'));
 
             // Check start exclusive, end exclusive
-            opts.startInclusive = false;
-            opts.endInclusive = false;
+            opts = {
+                gt: 'foo',
+                lt: 'gaz',
+            }
             let itsExEx = await iterateAll(iterateKeys(stringsRef, opts));
             expect(itsExEx).toEqual(_.without(expectedItems, 'bar', 'foo', 'gaz', 'gazB'));
 
             // Check start inclusive, end exclusive
-            opts.startInclusive = true;
-            opts.endInclusive = false;
+            opts = {
+                gte: 'foo',
+                lt: 'gaz',
+            }
             let itsIncEx = await iterateAll(iterateKeys(stringsRef, opts));
             expect(itsIncEx).toEqual(_.without(expectedItems, 'bar', 'gaz', 'gazB'));
-
-            // Check defaults are include start and exclude end
-            delete opts.startInclusive;
-            delete opts.endInclusive;
-            let itsDefault = await iterateAll(iterateKeys(stringsRef, opts));
-            expect(itsDefault).toEqual(itsIncEx);
         });
 
         it('should iterate all keys once in reverse direction', async () => {
@@ -149,61 +153,62 @@ describe('iterate #', () => {
                 reverse: true,
             }
             let stringsRef = runRef.get('strings');
-            
+
             let names = ['bar', 'foo', 'gaz'];
             let expectedItems: string[] = [];
             for (let name of names) {
                 expectedItems.unshift(name);
                 stringsRef.get(name).put(name + '1');
             }
-    
+
             let its = await iterateAll(iterateKeys(stringsRef, opts));
             expect(its).toEqual(expectedItems);
         });
 
         it('should iterate and filter in reverse direction', async () => {
             let opts: IterateOptions = {
-                start: 'foo',
-                end: 'gaz',
-                startInclusive: true,
-                endInclusive: true,
+                gte: 'foo',
+                lte: 'gaz',
                 reverse: true,
             }
             let stringsRef = runRef.get('strings');
-            
+
             let names = ['bar', 'foo', 'fooB', 'gaz', 'gazB'];
             let expectedItems: string[] = [];
             for (let name of names) {
                 expectedItems.unshift(name);
                 stringsRef.get(name).put(name + '1');
             }
-    
+
             let itsIncInc = await iterateAll(iterateKeys(stringsRef, opts));
             expect(itsIncInc).toEqual(_.without(expectedItems, 'bar', 'gazB'));
 
             // Check start exclusive, end inclusive
-            opts.startInclusive = false;
-            opts.endInclusive = true;
+            opts = {
+                gt: 'foo',
+                lte: 'gaz',
+                reverse: true,
+            }
             let itsExInc = await iterateAll(iterateKeys(stringsRef, opts));
             expect(itsExInc).toEqual(_.without(expectedItems, 'bar', 'foo', 'gazB'));
 
             // Check start exclusive, end exclusive
-            opts.startInclusive = false;
-            opts.endInclusive = false;
+            opts = {
+                gt: 'foo',
+                lt: 'gaz',
+                reverse: true,
+            }
             let itsExEx = await iterateAll(iterateKeys(stringsRef, opts));
             expect(itsExEx).toEqual(_.without(expectedItems, 'bar', 'foo', 'gaz', 'gazB'));
 
             // Check start inclusive, end exclusive
-            opts.startInclusive = true;
-            opts.endInclusive = false;
+            opts = {
+                gte: 'foo',
+                lt: 'gaz',
+                reverse: true,
+            }
             let itsIncEx = await iterateAll(iterateKeys(stringsRef, opts));
             expect(itsIncEx).toEqual(_.without(expectedItems, 'bar', 'gaz', 'gazB'));
-
-            // Check defaults are include start and exclude end
-            delete opts.startInclusive;
-            delete opts.endInclusive;
-            let itsDefault = await iterateAll(iterateKeys(stringsRef, opts));
-            expect(itsDefault).toEqual(itsIncEx);
         });
 
         it('should yield nothing on an empty node', async () => {
@@ -221,12 +226,12 @@ describe('iterate #', () => {
 
         it('should not work with lexical filtering', async () => {
             let stringsRef = runRef.get('strings');
-            
+
             let names = ['bar', 'foo', 'gaz'];
             for (let name of names) {
                 stringsRef.get(name).put(name + '1');
             }
-    
+
             // The filter should do nothing as its
             // not supported
             let filteredRef = stringsRef.get({
@@ -240,10 +245,10 @@ describe('iterate #', () => {
     });
 
     describe('iterateValues', () => {
-    
+
         it('should iterate all primitives once', async () => {
             let stringsRef = runRef.get('strings');
-            
+
             let names = ['bar', 'foo', 'gaz'];
             let expectedItems: string[] = [];
             for (let name of names) {
@@ -251,14 +256,14 @@ describe('iterate #', () => {
                 expectedItems.push(item);
                 stringsRef.get(name).put(item);
             }
-    
+
             let its = await iterateAll(iterateValues(stringsRef));
             expect(its).toEqual(expectedItems);
         });
-    
+
         it('should iterate all records once', async () => {
             let itemsRef = runRef.get('items');
-            
+
             let names = ['bar', 'foo', 'gaz'];
             let expectedItems: Item[] = [];
             for (let name of names) {
@@ -266,7 +271,7 @@ describe('iterate #', () => {
                 itemsRef.get(name).put(item as never);
                 expectedItems.push(item);
             }
-    
+
             let its = await iterateAll(iterateValues(itemsRef));
             expect(its.map(x => _.omit(x, '_'))).toEqual(expectedItems);
         });
