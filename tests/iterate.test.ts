@@ -1,4 +1,4 @@
-import { iterateValues, iterateKeys, IterateOptions, iterateAll } from '../src/iterate';
+import { iterateValues, iterateKeys, IterateOptions, iterateAll, iterateRecord, scanRecord } from '../src/iterate';
 import { TEST_GUN_OPTIONS } from '../src/const';
 import { IGunChainReference } from 'gun/types/chain';
 import _ from 'lodash';
@@ -42,6 +42,48 @@ describe('iterate #', () => {
 
     afterAll(() => {
         (gun as any) = undefined;
+    });
+
+    describe('scanRecord', () => {
+
+        let scanRef: any;
+        let data = {
+            bar: 'bar1',
+            foo: 'foo1',
+            gaz: 'gaz1',
+        };
+
+        beforeAll(async () => {
+            // Use a clean node on every run
+            scanRef = gun.get(uuidv4());
+            let promises: any[] = [];
+            _.forIn(data, (v, k) => {
+                let promise = scanRef.get('strings').get(k).put(v).then!();
+                promises.push(promise);
+            });
+            await Promise.all(promises);
+        });
+
+        it('should scan all items', async () => {
+            let stringsRef = scanRef.get('strings');
+            let expectedItems = _.toPairs(data).map(x => x.reverse());
+            expectedItems = _.sortBy(expectedItems, [0]);
+            let its = await iterateAll(scanRecord(stringsRef));
+            its = _.sortBy(its, [0]);
+            expect(its).toEqual(expectedItems);
+        });
+
+        it('should scan filtered items', async () => {
+            let stringsRef = scanRef.get('strings');
+            let filteredStringsRef = stringsRef.get({
+                '.': {
+                    '*': 'f'
+                }
+            } as any);
+            let its = await iterateAll(scanRecord(filteredStringsRef));
+            its = _.sortBy(its, [0]);
+            expect(its).toEqual([['foo1', 'foo']]);
+        });
     });
 
     describe('iterateKeys', () => {
@@ -175,6 +217,25 @@ describe('iterate #', () => {
             await ref.put(null as never).then!();
             let vals = await iterateAll(iterateKeys(ref));
             expect(vals).toEqual([]);
+        });
+
+        it('should not work with lexical filtering', async () => {
+            let stringsRef = runRef.get('strings');
+            
+            let names = ['bar', 'foo', 'gaz'];
+            for (let name of names) {
+                stringsRef.get(name).put(name + '1');
+            }
+    
+            // The filter should do nothing as its
+            // not supported
+            let filteredRef = stringsRef.get({
+                '.': {
+                    '*': 'f'
+                }
+            } as any);
+            let its = await iterateAll(iterateKeys(filteredRef as any));
+            expect(its).toEqual(names);
         });
     });
 

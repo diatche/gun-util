@@ -1,23 +1,28 @@
 import { IGunChainReference } from "gun/types/chain";
 import _ from "lodash";
 
-export interface IterateOptions {
+const WAIT_DEFAULT = 99;
+
+export interface FilterOptions {
     start?: string;
     end?: string;
     /** True by default. */
     startInclusive?: boolean;
     /** False by default. */
     endInclusive?: boolean;
-    reverse?: boolean;
 }
 
-export interface FastIterateOptions {
+export interface ScanOptions extends FilterOptions {
     /**
      * After this time interval (ms), no more
      * data is returned. Defaults to Gun's default
      * of 99 ms.
      **/
     wait?: number;
+}
+
+export interface IterateOptions extends ScanOptions {
+    reverse?: boolean;
 }
 
 /**
@@ -34,25 +39,28 @@ export async function iterateAll<T>(it: AsyncIterable<T>): Promise<T[]> {
 }
 
 /**
- * Iterate over the inner keys of a record at a Gun node reference.
+ * Iterates over the inner keys of a record at a Gun node reference.
  * 
- * Filtering can be done using [Gun's lexical wire spec](https://gun.eco/docs/RAD#lex).
+ * Filtering using [Gun's lexical wire spec](https://gun.eco/docs/RAD#lex)
+ * is supported.
  * 
- * Note that keys are not guaranteed to be in order if there
- * is more than one connected peer.
+ * This method is faster than {@link iterateRecord}, but it sacrifices
+ * guaranteed sorting of data by key. This is the case if there is more
+ * than one connected peer.
  * 
  * @param ref Gun node reference
  **/
-export async function * fastIterateRecord<V = any, T = Record<any, V>>(
+export async function * scanRecord<V = any, T = Record<any, V>>(
     ref: IGunChainReference<T>,
-    opts: FastIterateOptions = {},
+    opts: ScanOptions = {},
 ): AsyncGenerator<[V, string]> {
     let isDone = false;
     let error: any;
     let batch: [V, string][] = [];
     let resolver: (() => void) | undefined;
     let nextBatchReady: Promise<void> | undefined;
-    let { wait } = opts;
+    let lastDataDate = new Date();
+    let { wait = WAIT_DEFAULT } = opts;
 
     let _resolve = () => {
         let resolve = resolver;
@@ -61,20 +69,31 @@ export async function * fastIterateRecord<V = any, T = Record<any, V>>(
         nextBatchReady = undefined;
     }
 
-    let onError = (e: any) => {
-        error = e;
-        isDone = true;
-        _resolve();
-    };
     let onComplete = () => {
         isDone = true;
         _resolve();
     };
 
-    ref.map().once((data, key) => {
+    let sub = ref.map().once((data, key) => {
         batch.push([data as V, key]);
+        lastDataDate = new Date();
         _resolve();
-    }, opts);
+    }, { wait });
+
+    if (!sub) {
+        // There's nothing at this reference
+        // or it has been deleted.
+        return;
+    }
+
+    let timer = setInterval(() => {
+        if (!timer) return;
+        let now = new Date();
+        if (now.valueOf() - lastDataDate.valueOf() > wait) {
+            clearInterval(timer);
+            onComplete();
+        }
+    }, wait);
 
     while (!isDone) {
         // How does the generator break out of the loop early?
@@ -98,6 +117,12 @@ export async function * fastIterateRecord<V = any, T = Record<any, V>>(
         }
     }
 
+    // Clean up
+    sub.off();
+    (sub as any) = undefined;
+    clearInterval(timer);
+    (timer as any) = undefined;
+
     if (error) {
         throw error;
     } else {
@@ -108,11 +133,16 @@ export async function * fastIterateRecord<V = any, T = Record<any, V>>(
 }
 
 /**
- * Iterate over the inner keys of a record at a Gun node reference.
+ * Iterates over the inner keys of a record at a Gun node reference,
+ * by loading the whole record.
  * 
  * Note that keys are guaranteed to be in order, but if a peer
- * fails to reply within the timeout period, the item [value, key] will
+ * fails to reply within the `wait` period, the item [value, key] will
  * skipped. A second pass is necessary to get these skipped items.
+ * 
+ * Filtering using [Gun's lexical wire spec](https://gun.eco/docs/RAD#lex)
+ * is **not** supported (as at Gun v0.2020.520). Use {@link scanRecord}
+ * instead, if you need to filter in this way.
  * 
  * @param ref Gun node reference
  **/
@@ -126,6 +156,7 @@ export async function * iterateRecord<V = any, T = Record<any, V>>(
         startInclusive = true,
         endInclusive = false,
         reverse = false,
+        wait = WAIT_DEFAULT,
     } = opts;
 
     if (typeof start !== 'undefined' && typeof end !== 'undefined') {
@@ -140,7 +171,16 @@ export async function * iterateRecord<V = any, T = Record<any, V>>(
     // use GUN's lexical wire spec to filter and or batch: https://gun.eco/docs/RAD
 
     // Get list of keys:
-    let obj: any = await ref.then!();
+    // Prefer using `once` instead of `then` to allow
+    // customizing `wait`.
+    let obj: any = await new Promise((resolve, reject) => {
+        let res = ref.once((data, key) => {
+            resolve(data);
+        }, { wait });
+        if (!res) {
+            resolve(undefined);
+        }
+    });
     if (typeof obj === 'undefined' || obj === null) {
         return;
     }
@@ -149,32 +189,11 @@ export async function * iterateRecord<V = any, T = Record<any, V>>(
     }
     // Remove meta
     obj = _.omit(obj, '_');
-    
     let keys = Object.keys(obj).sort();
-    let len = keys.length;
-    if (len === 0) {
-        return;
-    }
 
     // Find iteration bounds
-    let iStart = 0;
-    if (typeof start !== 'undefined') {
-        iStart = _.sortedIndex(keys, start);
-        let key = keys[iStart];
-        if (key <= start && !startInclusive) {
-            iStart += 1;
-        }
-    }
-    let iEnd = len - 1;
-    if (typeof end !== 'undefined') {
-        iEnd = _.sortedIndex(keys, end);
-        let key = keys[iEnd];
-        if (key >= end && !endInclusive) {
-            iEnd -= 1;
-        }
-        iEnd = Math.min(iEnd, len - 1);
-    }
-    if (iStart > iEnd) {
+    let [iStart, iEnd] = filteredKeyRange(keys, opts);
+    if (iStart >= iEnd) {
         return;
     }
 
@@ -182,13 +201,13 @@ export async function * iterateRecord<V = any, T = Record<any, V>>(
     let key: string;
     if (!reverse) {
         // Natural direction
-        for (let i = iStart; i <= iEnd; i++) {
+        for (let i = iStart; i < iEnd; i++) {
             key = keys[i];
             yield [obj[key], key];
         }
     } else {
         // Reverse direction
-        for (let i = iEnd; i >= iStart; i--) {
+        for (let i = iEnd - 1; i >= iStart; i--) {
             key = keys[i];
             yield [obj[key], key];
         }
@@ -204,7 +223,7 @@ export async function * iterateRecord<V = any, T = Record<any, V>>(
  * 
  * @param ref Gun node reference
  **/
-export async function * iterateRefs<T = any>(
+export async function* iterateRefs<T = any>(
     ref: IGunChainReference<T[] | Record<any, T>>,
     opts?: IterateOptions,
 ): AsyncGenerator<[IGunChainReference<T>, string]> {
@@ -224,7 +243,7 @@ export async function * iterateRefs<T = any>(
  * 
  * @param ref Gun node reference
  **/
-export async function * iterateItems<T = any>(
+export async function* iterateItems<T = any>(
     ref: IGunChainReference<T[] | Record<any, T>>,
     opts?: IterateOptions,
 ): AsyncGenerator<[T, string]> {
@@ -246,7 +265,7 @@ export async function * iterateItems<T = any>(
  * 
  * @param ref Gun node reference
  **/
-export async function * iterateValues<T = any>(
+export async function* iterateValues<T = any>(
     ref: IGunChainReference<T[] | Record<any, T>>,
     opts?: IterateOptions,
 ): AsyncGenerator<T> {
@@ -264,7 +283,7 @@ export async function * iterateValues<T = any>(
  * 
  * @param ref Gun node reference
  **/
-export async function * iterateKeys(
+export async function* iterateKeys(
     ref: IGunChainReference,
     opts?: IterateOptions,
 ): AsyncGenerator<string> {
@@ -272,3 +291,86 @@ export async function * iterateKeys(
         yield k;
     }
 }
+
+// export const filterKey = (key: string, opts: FilterOptions): boolean => {
+//     let {
+//         start,
+//         end,
+//         startInclusive = true,
+//         endInclusive = false,
+//     } = opts;
+
+//     if (typeof start !== 'undefined') {
+//         if (key < start) return false;
+
+//         iStart = _.sortedIndex(keys, start);
+//         let key = keys[iStart];
+//         if (key <= start && !startInclusive) {
+//             iStart += 1;
+//         }
+//     }
+//     // iEnd is inclusive here
+//     let iEnd = len - 1;
+//     if (typeof end !== 'undefined') {
+//         iEnd = _.sortedIndex(keys, end);
+//         let key = keys[iEnd];
+//         if (key >= end && !endInclusive) {
+//             iEnd -= 1;
+//         }
+//         iEnd = Math.min(iEnd, len - 1);
+//     }
+// };
+
+/**
+ * Returns the filtered range of a set of keys
+ * sorted in ascending lexical order.
+ * 
+ * @param keys 
+ * @param opts 
+ * @returns
+ *  The start (inclusive) and end (exclusive) indexes of
+ *  the keys matching the filter.
+ */
+export const filteredKeyRange = (keys: string[], opts: FilterOptions): [number, number] => {
+    let len = keys.length;
+    if (len === 0) {
+        return [0, 0];
+    }
+    if (len === 1) {
+        if (filterKey(keys[0], opts)) {
+            return [0, 1]
+        } else {
+            return [0, 0];
+        }
+    }
+
+    let {
+        start,
+        end,
+        startInclusive = true,
+        endInclusive = false,
+    } = opts;
+
+    let iStart = 0;
+    if (typeof start !== 'undefined') {
+        iStart = _.sortedIndex(keys, start);
+        let key = keys[iStart];
+        if (key <= start && !startInclusive) {
+            iStart += 1;
+        }
+    }
+    // iEnd is inclusive here
+    let iEnd = len - 1;
+    if (typeof end !== 'undefined') {
+        iEnd = _.sortedIndex(keys, end);
+        let key = keys[iEnd];
+        if (key >= end && !endInclusive) {
+            iEnd -= 1;
+        }
+        iEnd = Math.min(iEnd, len - 1);
+    }
+    if (iStart > iEnd) {
+        return [0, 0];
+    }
+    return [iStart, iEnd + 1];
+};
