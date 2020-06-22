@@ -143,49 +143,62 @@ describe('Auth', () => {
             });
 
             it('should resolve all listeneres when user created', async done => {
+                let user = '';
                 let pub1 = '';
                 let pub2 = '';
+                const maybeDone = () => {
+                    if (user && pub1 && pub2) {
+                        done();
+                    }
+                };
                 auth.onAuth().then(pub => {
                     pub1 = pub;
+                    expect(pub1).toEqual(pub);
+                    maybeDone();
                 });
                 auth.onAuth().then(pub => {
                     pub2 = pub;
+                    expect(pub2).toEqual(pub);
+                    maybeDone();
                 });
-                let user = await auth.create(newCreds());
-                setTimeout(() => {
+                user = await auth.create(newCreds());
+            });
+
+            it('should resolve all listeneres when logged in', async done => {
+                let user = '';
+                let pub1 = '';
+                let pub2 = '';
+                const maybeDone = () => {
+                    if (user && pub1 && pub2) {
+                        done();
+                    }
+                };
+                auth.onAuth().then(pub => {
+                    pub1 = pub;
+                    expect(pub1).toEqual(pub);
+                    maybeDone();
+                });
+                auth.onAuth().then(pub => {
+                    pub2 = pub;
+                    expect(pub2).toEqual(pub);
+                    maybeDone();
+                });
+                user = await auth.login(creds);
+            });
+
+            it('should resolve when logged in after a failed attempt', async done => {
+                let user = '';
+                auth.onAuth().then(pub1 => {
                     expect(pub1).toEqual(user);
-                    expect(pub2).toEqual(user);
                     done();
-                }, 100);
-            });
-
-            it('should resolve all listeneres when logged in', async () => {
-                let pub1 = '';
-                let pub2 = '';
-                auth.onAuth().then(pub => {
-                    pub1 = pub;
-                });
-                auth.onAuth().then(pub => {
-                    pub2 = pub;
-                });
-                let user = await auth.login(creds);
-                expect(pub1).toEqual(user);
-                expect(pub2).toEqual(user);
-            });
-
-            it('should resolve when logged in after a failed attempt', async () => {
-                let pub1 = '';
-                auth.onAuth().then(pub => {
-                    pub1 = pub;
                 });
                 try {
                     let user = await auth.login({ ...creds, pass: 'x' });
                 } catch (e) { }
-                let user = await auth.login(creds);
-                expect(pub1).toEqual(user);
+                user = await auth.login(creds);
             });
 
-            it('should resolve when logged in with different user', async () => {
+            it('should resolve when logged in with different user', async done => {
                 let creds2 = newCreds();
                 await auth.create(creds2);
                 auth.logout();
@@ -193,13 +206,25 @@ describe('Auth', () => {
                 let user1 = await auth.login(creds);
                 auth.logout();
 
-                let pub2 = '';
-                auth.onAuth().then(pub => {
-                    pub2 = pub;
+                let user2 = '';
+                auth.onAuth().then(pub2 => {
+                    expect(pub2).toEqual(user2);
+                    done();
                 });
-                let user2 = await auth.login(creds2);
-                expect(pub2).toEqual(user2);
+                user2 = await auth.login(creds2);
                 expect(user2).not.toEqual(user1);
+            });
+
+            it('should resolve when logged in with Gun methods', done => {
+                let pub = '';
+                auth.onAuth().then(pub1 => {
+                    expect(pub1).toEqual(pub);
+                    done();
+                });
+                gun.user().auth(creds.alias, creds.pass, ack => {
+                    pub = (ack as any).sea.pub;
+                    expect(pub).toBeTruthy();
+                });
             });
         });
 
