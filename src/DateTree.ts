@@ -11,11 +11,16 @@ export const ALL_DATE_UNITS: DateUnit[] = [
     'year', 'month', 'day', 'hour', 'minute', 'second', 'millisecond',
 ];
 
+export const DATE_UNIT_SET = new Set(ALL_DATE_UNITS);
+
 export type DateParsable = Moment | Date | string | number;
 
 const ZERO_DATE = moment.utc().startOf('year').set('year', 1);
 
 type DateComponentsUnsafe = { [res: string]: number };
+type ImmutableDateComponentsUnsafe = {
+    readonly [res: string]: number
+};
 
 /**
  * All date components are natural.
@@ -533,7 +538,7 @@ export default class DateTree<T = any> {
 
     static isResolution(resolution: any): resolution is DateUnit {
         if (typeof resolution !== 'string') return false;
-        return ALL_DATE_UNITS.indexOf(resolution as DateUnit) >= 0;
+        return DATE_UNIT_SET.has(resolution as DateUnit);
     }
 }
 
@@ -562,21 +567,45 @@ const nativeDateValue = (value: number, res: DateUnit): number => {
     return value;
 };
 
-const MAX_DATE_COMPS: DateComponentsUnsafe = (() => {
-    let maxDate = moment.utc().endOf('year');
-    let units = _.without(ALL_DATE_UNITS, 'year');
-    return _.zipObject(units, units.map(r => graphDateValue(maxDate.get(nativeDateUnit(r)), r) + 1));
+/** The minimum (inclusive) date component values. */
+const MIN_DATE_COMPONENTS: Omit<{ readonly [K in DateUnit]: number }, 'year'> = (() => {
+    let maxDate = moment.utc().startOf('year');
+    let units = ALL_DATE_UNITS.slice(1);
+    return _.zipObject(units, units.map(r => graphDateValue(maxDate.get(nativeDateUnit(r)), r))) as any;
 })();
 
-const DATE_COMP_PADS = (() => {
-    let pads: { [unit: string]: number } = {
+/** The maximum (exclusive) date component values. */
+const MAX_DATE_COMPONENTS: Omit<{ readonly [K in DateUnit]: number }, 'year'> = (() => {
+    let maxDate = moment.utc().endOf('year');
+    let units = ALL_DATE_UNITS.slice(1);
+    return _.zipObject(units, units.map(r => graphDateValue(maxDate.get(nativeDateUnit(r)), r) + 1)) as any;
+})();
+
+const DATE_COMP_PADS: { readonly [K in DateUnit]: number } = (() => {
+    let pads: Partial<{ [K in DateUnit]: number }> = {
         year: 4
     };
     for (let unit of ALL_DATE_UNITS) {
-        if (unit in MAX_DATE_COMPS) {
-            let max = MAX_DATE_COMPS[unit] - 1;
+        if (unit !== 'year') {
+            let max = MAX_DATE_COMPONENTS[unit] - 1;
             pads[unit] = max.toString().length;
         }
     }
-    return pads;
+    return pads as { [K in DateUnit]: number };
 })();
+
+// /** The set of all possible keys of a date component. */
+// const DATE_COMPONENT_KEY_SETS: Omit<{ readonly [K in DateUnit]: Set<string> }, 'year'> = (() => {
+//     let sets: Partial<Omit<{ [K in DateUnit]: Set<string> }, 'year'>> = {};
+//     for (let unit of ALL_DATE_UNITS) {
+//         if (unit === 'year') continue;
+//         let min = MIN_DATE_COMPONENTS[unit];
+//         let max = MIN_DATE_COMPONENTS[unit];
+//         let set = new Set<string>();
+//         for (let i = min; i < max; i++) {
+//             set.add(DateTree.encodeDateComponent(i, unit)!);
+//         }
+//         sets[unit] = set;
+//     }
+//     return sets as Omit<{ readonly [K in DateUnit]: Set<string> }, 'year'>;
+// })();
