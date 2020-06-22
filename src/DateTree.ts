@@ -237,6 +237,7 @@ export default class DateTree<T = any> {
     async next(date?: DateParsable): Promise<[IGunChainReference<T> | undefined, Moment | undefined]> {
         let it = this.iterate({
             gt: date && parseDate(date) || undefined,
+            order: 1,
         });
         for await (let [ref, refDate] of it) {
             if (date) {
@@ -261,7 +262,7 @@ export default class DateTree<T = any> {
     async previous(date?: Moment): Promise<[IGunChainReference<T> | undefined, Moment | undefined]> {
         let it = this.iterate({
             lt: date && parseDate(date) || undefined,
-            reverse: true,
+            order: -1,
         });
         for await (let [ref, refDate] of it) {
             if (date) {
@@ -290,7 +291,7 @@ export default class DateTree<T = any> {
             startClosed,
             endClosed,
         } = range;
-        let { reverse } = opts;
+        let { order } = opts;
         let ref: IGunChainReference | undefined = this.root;
         let startComps = (start && DateTree.getDateComponents(start, this.resolution) || {}) as Partial<DateComponentsUnsafe>;
         let endComps = (end && DateTree.getDateComponents(end, this.resolution) || {}) as Partial<DateComponentsUnsafe>;
@@ -323,7 +324,7 @@ export default class DateTree<T = any> {
                 });
                 it = this._iterateRef(ref, {
                     ...filter,
-                    reverse,
+                    order,
                 });
                 itStack.unshift(it);
                 ref = undefined;

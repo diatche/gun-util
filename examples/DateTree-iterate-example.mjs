@@ -1,4 +1,5 @@
 import Gun from 'gun';
+import moment from 'moment';
 import { DateTree } from '../dist/index.mjs';
 
 let gun = Gun();
@@ -12,7 +13,7 @@ tree.get('2020-01-16 05:45').put({ event: 'earlybird' });
 (async () => {
     // A naive implementation would have close to a billion
     // nodes and would take forever to iterate.
-    // This takes only a second and is non blocking:
+    // This takes a fraction of a second and is non blocking:
     for await (let [ref, date] of tree.iterate()) {
         let event = await ref.get('event').then();
         console.log(`${date} event: ${event}`);

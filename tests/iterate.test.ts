@@ -1,9 +1,9 @@
 import {
+    iterateRecord,
     iterateValues,
     iterateKeys,
     IterateOptions,
     iterateAll,
-    scanRecord,
 } from '../src/iterate';
 import { TEST_GUN_OPTIONS } from '../src/const';
 import { IGunChainReference } from 'gun/types/chain';
@@ -50,7 +50,7 @@ describe('iterate *', () => {
         (gun as any) = undefined;
     });
 
-    describe('scanRecord', () => {
+    describe('iterateRecord without order', () => {
 
         let scanRef: any;
         let data = {
@@ -74,25 +74,25 @@ describe('iterate *', () => {
             let stringsRef = scanRef.get('strings');
             let expectedItems = _.toPairs(data).map(x => x.reverse());
             expectedItems = _.sortBy(expectedItems, [0]);
-            let its = await iterateAll(scanRecord(stringsRef));
+            let its = await iterateAll(iterateRecord(stringsRef, { order: 0 }));
             its = _.sortBy(its, [0]);
             expect(its).toEqual(expectedItems);
         });
 
-        it('should scan filtered items', async () => {
+        it('should support lexical filtering', async () => {
             let stringsRef = scanRef.get('strings');
             let filteredStringsRef = stringsRef.get({
                 '.': {
                     '*': 'f'
                 }
             } as any);
-            let its = await iterateAll(scanRecord(filteredStringsRef));
+            let its = await iterateAll(iterateRecord(filteredStringsRef, { order: 0 }));
             its = _.sortBy(its, [0]);
             expect(its).toEqual([['foo1', 'foo']]);
         });
     });
 
-    describe('iterateKeys', () => {
+    describe('iterateKeys with order', () => {
 
         it('should iterate all keys once in natural direction', async () => {
             let stringsRef = runRef.get('strings');
@@ -102,7 +102,7 @@ describe('iterate *', () => {
                 stringsRef.get(name).put(name + '1');
             }
 
-            let its = await iterateAll(iterateKeys(stringsRef));
+            let its = await iterateAll(iterateKeys(stringsRef, { order: 1 }));
             expect(its).toEqual(names);
         });
 
@@ -110,6 +110,7 @@ describe('iterate *', () => {
             let opts: IterateOptions = {
                 gte: 'foo',
                 lte: 'gaz',
+                order: 1,
             }
             let stringsRef = runRef.get('strings');
 
@@ -127,6 +128,7 @@ describe('iterate *', () => {
             opts = {
                 gt: 'foo',
                 lte: 'gaz',
+                order: 1,
             }
             let itsExInc = await iterateAll(iterateKeys(stringsRef, opts));
             expect(itsExInc).toEqual(_.without(expectedItems, 'bar', 'foo', 'gazB'));
@@ -135,6 +137,7 @@ describe('iterate *', () => {
             opts = {
                 gt: 'foo',
                 lt: 'gaz',
+                order: 1,
             }
             let itsExEx = await iterateAll(iterateKeys(stringsRef, opts));
             expect(itsExEx).toEqual(_.without(expectedItems, 'bar', 'foo', 'gaz', 'gazB'));
@@ -143,6 +146,7 @@ describe('iterate *', () => {
             opts = {
                 gte: 'foo',
                 lt: 'gaz',
+                order: 1,
             }
             let itsIncEx = await iterateAll(iterateKeys(stringsRef, opts));
             expect(itsIncEx).toEqual(_.without(expectedItems, 'bar', 'gaz', 'gazB'));
@@ -150,7 +154,7 @@ describe('iterate *', () => {
 
         it('should iterate all keys once in reverse direction', async () => {
             let opts: IterateOptions = {
-                reverse: true,
+                order: -1,
             }
             let stringsRef = runRef.get('strings');
 
@@ -169,7 +173,7 @@ describe('iterate *', () => {
             let opts: IterateOptions = {
                 gte: 'foo',
                 lte: 'gaz',
-                reverse: true,
+                order: -1,
             }
             let stringsRef = runRef.get('strings');
 
@@ -187,7 +191,7 @@ describe('iterate *', () => {
             opts = {
                 gt: 'foo',
                 lte: 'gaz',
-                reverse: true,
+                order: -1,
             }
             let itsExInc = await iterateAll(iterateKeys(stringsRef, opts));
             expect(itsExInc).toEqual(_.without(expectedItems, 'bar', 'foo', 'gazB'));
@@ -196,7 +200,7 @@ describe('iterate *', () => {
             opts = {
                 gt: 'foo',
                 lt: 'gaz',
-                reverse: true,
+                order: -1,
             }
             let itsExEx = await iterateAll(iterateKeys(stringsRef, opts));
             expect(itsExEx).toEqual(_.without(expectedItems, 'bar', 'foo', 'gaz', 'gazB'));
@@ -205,7 +209,7 @@ describe('iterate *', () => {
             opts = {
                 gte: 'foo',
                 lt: 'gaz',
-                reverse: true,
+                order: -1,
             }
             let itsIncEx = await iterateAll(iterateKeys(stringsRef, opts));
             expect(itsIncEx).toEqual(_.without(expectedItems, 'bar', 'gaz', 'gazB'));
@@ -213,14 +217,14 @@ describe('iterate *', () => {
 
         it('should yield nothing on an empty node', async () => {
             let ref = runRef.get('empty');
-            let vals = await iterateAll(iterateKeys(ref));
+            let vals = await iterateAll(iterateKeys(ref, { order: 1 }));
             expect(vals).toEqual([]);
         });
 
         it('should yield nothing on a nulled node', async () => {
             let ref = runRef.get('empty');
             await ref.put(null as never).then!();
-            let vals = await iterateAll(iterateKeys(ref));
+            let vals = await iterateAll(iterateKeys(ref, { order: 1 }));
             expect(vals).toEqual([]);
         });
 
@@ -239,12 +243,12 @@ describe('iterate *', () => {
                     '*': 'f'
                 }
             } as any);
-            let its = await iterateAll(iterateKeys(filteredRef as any));
+            let its = await iterateAll(iterateKeys(filteredRef as any, { order: 1 }));
             expect(its).toEqual(names);
         });
     });
 
-    describe('iterateValues', () => {
+    describe('iterateValues with order', () => {
 
         it('should iterate all primitives once', async () => {
             let stringsRef = runRef.get('strings');
@@ -257,7 +261,7 @@ describe('iterate *', () => {
                 stringsRef.get(name).put(item);
             }
 
-            let its = await iterateAll(iterateValues(stringsRef));
+            let its = await iterateAll(iterateValues(stringsRef, { order: 1 }));
             expect(its).toEqual(expectedItems);
         });
 
@@ -272,7 +276,7 @@ describe('iterate *', () => {
                 expectedItems.push(item);
             }
 
-            let its = await iterateAll(iterateValues(itemsRef));
+            let its = await iterateAll(iterateValues(itemsRef, { order: 1 }));
             expect(its.map(x => _.omit(x, '_'))).toEqual(expectedItems);
         });
     });

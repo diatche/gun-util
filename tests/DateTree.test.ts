@@ -204,6 +204,7 @@ describe('DateTree #', () => {
             let it = tree.iterate({
                 gte: moment.utc('2010-11-30'),
                 lt: moment.utc('2011-01-04'),
+                order: 1,
             });
             for await (let [ref, date] of it) {
                 refTable[date.format('YYYY-MM-DD')] = ref;
