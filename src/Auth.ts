@@ -20,7 +20,8 @@ export default class Auth {
 
     private _authOp = false;
     private _onAuth$: Promise<string> | undefined;
-    private _onAuthResolver: any;
+    private _onAuthResolver: ((pub: string) => void) | undefined;
+    private _subscribedToAuth = false;
 
     private static _default: Auth | undefined;
 
@@ -29,6 +30,7 @@ export default class Auth {
             throw new Error('Must specify a valid gun instance');
         }
         this.gun = gun;
+        this._subscribeToAuth();
 
         if (!Auth._default) {
             if (!Auth.defaultGun || gun === Auth.defaultGun) {
@@ -113,16 +115,37 @@ export default class Auth {
 
     async _onAuth(): Promise<string> {
         return new Promise<string>((resolve, reject) => {
-            (this.gun as any).on('auth', () => {
-                this._onAuth$ = undefined;
-                let pub = this.pub();
-                if (pub) {
-                    resolve(pub);
-                } else {
-                    reject(new AuthError('Unexpected login error'));
-                }
-            });
+            // Allow resolving immediately in other methods
+            this._beginOnAuth(resolve);
+        }).then(pub => {
+            this._endOnAuth();
+            return pub;
         });
+    }
+
+    private _subscribeToAuth() {
+        // Note that only one listener can be
+        // registered to gun.on('auth')
+        if (this._subscribedToAuth) return;
+        this._subscribedToAuth = true;
+        (this.gun as any).on('auth', () => {
+            this._endOnAuth();
+        });
+    }
+
+    private _beginOnAuth(resolver: (pub: string) => void) {
+        this._onAuthResolver = resolver;
+    }
+
+    private _endOnAuth(pub?: string) {
+        pub = pub || this.pub();
+        if (pub && this._onAuthResolver) {
+            let resolve = this._onAuthResolver;
+            this._onAuthResolver = undefined;
+            this._onAuth$ = undefined;
+            resolve(pub);
+        }
+        return pub;
     }
 
     async create(creds: UserCredentials): Promise<string> {
@@ -207,10 +230,7 @@ export default class Auth {
     private async _getCreatePub(
         { alias, pass, newPass }: UserCredentials & { newPass?: string }
     ): Promise<string> {
-        return new Promise((resolve, reject) => {
-            let resolveOnce: (typeof resolve) | undefined = resolve;
-            let rejectOnce: (typeof reject) | undefined = reject;
-            let timer: any;
+        let createAction = new Promise<string>((resolve, reject) => {
             let options: any = {};
             if (newPass) {
                 options.change = newPass;
@@ -222,26 +242,25 @@ export default class Auth {
             }
             
             this.gun.user().create(alias, pass, ack => {
-                if (!resolveOnce || !rejectOnce) return;
-
                 if ('err' in ack) {
                     // Check for login anyway
                     let pub = this.pub();
                     if (pub !== previousPub) {
                         // Actually created user
-                        resolveOnce(pub);
+                        resolve(pub);
                     } else {
-                        rejectOnce(new UserExists(ack.err));
+                        reject(new UserExists(ack.err));
                     }
                 } else {
-                    resolveOnce(ack.pub);
+                    resolve(ack.pub);
                 }
-
-                resolveOnce = undefined;
-                rejectOnce = undefined;
-                clearTimeout(timer);
             }, options) as IGunChainReference;
         });
+
+        return Promise.race([
+            createAction,
+            this.onAuth()
+        ]);
     }
 
     private async _authBlock<T>(block: () => Promise<T>): Promise<T> {
@@ -253,6 +272,7 @@ export default class Auth {
             return await block();
         } finally {
             this._authOp = false;
+            this._endOnAuth();
         }
     }
 }

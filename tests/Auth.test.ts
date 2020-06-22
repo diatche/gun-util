@@ -1,15 +1,22 @@
-import Auth from '../src/Auth';
+import Auth, { UserCredentials } from '../src/Auth';
 import { IGunChainReference } from 'gun/types/chain';
 import { TEST_GUN_OPTIONS } from '../src/const';
 import { InvalidCredentials, UserExists, AuthError } from '../src/errors';
 import Gun from 'gun';
-import { v4 as uuidv4 } from 'uuid';
+import uuid, { v4 as uuidv4 } from 'uuid';
 
 let gun: IGunChainReference;
 let auth: Auth;
-const creds = { alias: 'foo', pass: 'bar' };
+let creds: UserCredentials;
 
-describe('AuthManager', () => {
+const newCreds = () => {
+    return {
+        alias: uuidv4(),
+        pass: uuidv4()
+    };
+};
+
+describe('Auth', () => {
     jest.setTimeout(20000);
 
     beforeAll(() => {
@@ -57,6 +64,11 @@ describe('AuthManager', () => {
             auth = new Auth(gun);
         });
 
+        beforeEach(() => {
+            // New credentials on each run
+            creds = newCreds();
+        });
+
         afterEach(() => {
             auth.logout();
         });
@@ -71,6 +83,8 @@ describe('AuthManager', () => {
             it('should not create a duplicate user', async () => {
                 let user: string | undefined;
                 let createError: Error | undefined;
+                await auth.create(creds);
+                auth.logout();
                 try {
                     user = await auth.create(creds);
                 } catch (error) {
@@ -83,9 +97,9 @@ describe('AuthManager', () => {
             it('should not create users in parallel', async () => {
                 let errors: Error[] = [];
                 let usersAndErrors = await Promise.all([
-                    auth.create({ alias: uuidv4(), pass: 'bar' })
+                    auth.create(newCreds())
                         .catch(error => errors.push(error)),
-                    auth.create({ alias: uuidv4(), pass: 'bar' })
+                    auth.create(newCreds())
                         .catch(error => errors.push(error)),
                 ]);
                 let users = usersAndErrors.filter(u => typeof u === 'string');
@@ -99,10 +113,8 @@ describe('AuthManager', () => {
         describe('login', () => {
 
             beforeEach(async () => {
-                try {
-                    await auth.create(creds);
-                    auth.logout();
-                } catch (error) { }
+                let pub = await auth.create(creds);
+                auth.logout();
             });
 
             it('should log in an existing user with correct credentials', async () => {
@@ -114,7 +126,7 @@ describe('AuthManager', () => {
                 let user: string | undefined;
                 let loginError: Error | undefined;
                 try {
-                    user = await auth.login({ ...creds, alias: creds.alias + '1' });
+                    user = await auth.login({ ...creds, pass: 'foo' });
                 } catch (error) {
                     loginError = error;
                 }
@@ -126,10 +138,25 @@ describe('AuthManager', () => {
         describe('onAuth', () => {
 
             beforeEach(async () => {
-                try {
-                    await auth.create(creds);
-                    auth.logout();
-                } catch (error) { }
+                await auth.create(creds);
+                auth.logout();
+            });
+
+            it('should resolve all listeneres when user created', async done => {
+                let pub1 = '';
+                let pub2 = '';
+                auth.onAuth().then(pub => {
+                    pub1 = pub;
+                });
+                auth.onAuth().then(pub => {
+                    pub2 = pub;
+                });
+                let user = await auth.create(newCreds());
+                setTimeout(() => {
+                    expect(pub1).toEqual(user);
+                    expect(pub2).toEqual(user);
+                    done();
+                }, 100);
             });
 
             it('should resolve all listeneres when logged in', async () => {
@@ -159,31 +186,27 @@ describe('AuthManager', () => {
             });
 
             it('should resolve when logged in with different user', async () => {
-                let pub1 = '';
-                let pub2 = '';
-                auth.onAuth().then(pub => {
-                    pub1 = pub;
-                });
-                let user1 = await auth.login(creds);
-                expect(pub1).toEqual(user1);
+                let creds2 = newCreds();
+                await auth.create(creds2);
                 auth.logout();
 
-                let creds2 = { ...creds, pass: 'x' };
-                try {
-                    let user = await auth.login(creds2);
-                    auth.logout();
-                } catch (e) { }
+                let user1 = await auth.login(creds);
+                auth.logout();
+
+                let pub2 = '';
+                auth.onAuth().then(pub => {
+                    pub2 = pub;
+                });
                 let user2 = await auth.login(creds2);
                 expect(pub2).toEqual(user2);
+                expect(user2).not.toEqual(user1);
             });
         });
 
         describe('changePass', () => {
 
             beforeEach(async () => {
-                try {
-                    await auth.create(creds);
-                } catch (error) { }
+                await auth.create(creds);
             });
 
             it.skip('should change credentials and login', async () => {
