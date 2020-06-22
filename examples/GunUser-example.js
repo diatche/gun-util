@@ -1,17 +1,13 @@
-const Gun = require('gun/gun');
+const Gun = require('gun');
 const { v4: uuidv4 } = require('uuid');
 const {
     GunUser,
-    fixSea,
 } = require('../dist');
 
-fixSea(Gun);
-
 let gun = Gun();
-let user = gun.user();
 
-user.on('auth', () => {
-    console.log('Logged in!');
+GunUser.onLogin(gun).then(pub => {
+    console.log('Detected login: ' + pub);
 });
 
 (async () => {
@@ -22,7 +18,7 @@ user.on('auth', () => {
     };
     let pub = await GunUser.create(creds, gun);
     console.log('account created: ' + pub);
-    GunUser.logout();
+    GunUser.logout(gun);
     console.log('login...');
     pub = await GunUser.login(creds, gun);
     console.log('Logged in: ' + pub);

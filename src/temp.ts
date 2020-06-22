@@ -11,6 +11,7 @@ export const gunLogOnceFix = (Gun: any) => {
     }
 };
 
+/** Call in case of user is not defined errors. */
 export const fixSea = (Gun: any) => {
     if (typeof Gun !== 'function') {
         throw new Error('Must specify a Gun constructor');

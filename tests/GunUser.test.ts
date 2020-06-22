@@ -1,4 +1,4 @@
-import GunUser from '../src/user';
+import GunUser from '../src/GunUser';
 import { IGunChainReference } from 'gun/types/chain';
 import { TEST_GUN_OPTIONS } from '../src/const';
 import { InvalidCredentials, UserExists, AuthError } from '../src/errors';
@@ -82,6 +82,61 @@ describe('User', () => {
             }
             expect(user).toBeFalsy();
             expect(loginError).toBeInstanceOf(InvalidCredentials);
+        });
+    });
+
+    describe('onLogin', () => {
+
+        beforeEach(async () => {
+            try {
+                await GunUser.create(creds, gun);
+                GunUser.logout(gun);
+            } catch (error) {}
+        });
+
+        it('should resolve all listeneres when logged in', async () => {
+            let pub1 = '';
+            let pub2 = '';
+            GunUser.onLogin(gun).then(pub => {
+                pub1 = pub;
+            });
+            GunUser.onLogin(gun).then(pub => {
+                pub2 = pub;
+            });
+            let user = await GunUser.login(creds, gun);
+            expect(pub1).toEqual(user);
+            expect(pub2).toEqual(user);
+        });
+
+        it('should resolve when logged in after a failed attempt', async () => {
+            let pub1 = '';
+            GunUser.onLogin(gun).then(pub => {
+                pub1 = pub;
+            });
+            try {
+                let user = await GunUser.login({ ...creds, pass: 'x' }, gun);
+            } catch (e) {}
+            let user = await GunUser.login(creds, gun);
+            expect(pub1).toEqual(user);
+        });
+
+        it('should resolve when logged in with different user', async () => {
+            let pub1 = '';
+            let pub2 = '';
+            GunUser.onLogin(gun).then(pub => {
+                pub1 = pub;
+            });
+            let user1 = await GunUser.login(creds, gun);
+            expect(pub1).toEqual(user1);
+            GunUser.logout(gun);
+            
+            let creds2 = { ...creds, pass: 'x' };
+            try {
+                let user = await GunUser.login(creds2, gun);
+                GunUser.logout(gun);
+            } catch (e) {}
+            let user2 = await GunUser.login(creds2, gun);
+            expect(pub2).toEqual(user2);
         });
     });
 

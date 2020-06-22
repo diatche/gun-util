@@ -1,7 +1,7 @@
+import Gun from "gun";
 import { IGunChainReference } from "gun/types/chain";
 import { InvalidCredentials, GunError, AuthError, UserExists, TimeoutError } from "./errors";
 import { IGunCryptoKeyPair } from "gun/types/types";
-import { fixSea } from "./temp";
 
 const LOGIN_CHECK_DELAY = 500;
 
@@ -14,9 +14,12 @@ export interface GunUserCredentials {
  * Convenience methods for creating an authenticating a Gun user.
  */
 export default class GunUser {
-    static _authOp = false;
+    private static _authOp = false;
+    private static _onLogin$: Promise<string> | undefined;
+    private static _onLoginGun: IGunChainReference | undefined;
 
     static logout(gun: IGunChainReference) {
+        validateGun(gun);
         if (!this.pub(gun)) {
             return;
         }
@@ -37,16 +40,16 @@ export default class GunUser {
      * The current user's public key.
      * @param gun 
      */
-    static pub(gun: IGunChainReference): string {
-        return (this.pair(gun) as any || {}).pub || '';
+    static pub(gun: IGunChainReference): string | undefined {
+        return this.pair(gun)?.pub;
     }
 
     /**
      * The current user's key pair.
      * @param gun 
      */
-    static pair(gun: IGunChainReference): IGunCryptoKeyPair {
-        fixSea(gun.constructor);
+    static pair(gun: IGunChainReference): IGunCryptoKeyPair | undefined {
+        validateGun(gun);
         let userRef = gun.user() as any;
         return userRef._.sea;
     }
@@ -58,6 +61,41 @@ export default class GunUser {
         this.logout(gun);
         return this._authBlock(async () => {
             return await this._getLoginPub(creds, gun);
+        });
+    }
+
+    /**
+     * Resolves when a user has logged in.
+     * If a user is already logged, resolves immediately.
+     */
+    static async onLogin(gun: IGunChainReference): Promise<string> {
+        // Allow multiple subscriptions to onLogin,
+        // so share the promise.
+        let pub = this.pub(gun);
+        if (pub) {
+            return Promise.resolve(pub);
+        }
+        if (this._onLoginGun !== gun) {
+            this._onLogin$ = undefined;
+        }
+        if (!this._onLogin$) {
+            this._onLoginGun = gun;
+            this._onLogin$ = this._onLogin(gun);
+        }
+        return this._onLogin$;
+    }
+
+    static async _onLogin(gun: IGunChainReference): Promise<string> {
+        return new Promise<string>((resolve, reject) => {
+            (gun as any).on('auth', () => {
+                this._onLogin$ = undefined;
+                let pub = this.pub(gun);
+                if (pub) {
+                    resolve(pub);
+                } else {
+                    reject(new AuthError('Unexpected login error'));
+                }
+            });
         });
     }
 
@@ -83,6 +121,7 @@ export default class GunUser {
         { alias, pass }: GunUserCredentials,
         gun: IGunChainReference
     ): Promise<void> {
+        validateGun(gun);
         return this._authBlock(async () => {
             return new Promise((resolve, reject) => {
                 gun.user().delete(alias, pass, ack => {
@@ -100,7 +139,8 @@ export default class GunUser {
         { alias, pass }: GunUserCredentials,
         gun: IGunChainReference
     ): Promise<string> {
-        return new Promise((resolve, reject) => {
+        validateGun(gun);
+        let loginAction = new Promise<string>((resolve, reject) => {
             let resolveOnce: (typeof resolve) | undefined = resolve;
             let rejectOnce: (typeof reject) | undefined = reject;
 
@@ -117,7 +157,6 @@ export default class GunUser {
             }, LOGIN_CHECK_DELAY);
 
             // Begin login
-            fixSea(gun.constructor);
             let ref = gun.user().auth(alias, pass, ack => {
                 if (!resolveOnce || !rejectOnce) return;
 
@@ -125,7 +164,8 @@ export default class GunUser {
                     // Check for login anyway
                     let pub = this.pub(gun);
                     if (pub) {
-                        // Actually logged in
+                        // Actually logged in.
+                        // (This is Gun v0.2020.520 behaviour only)
                         resolveOnce(pub);
                     } else if ((ack as any).lack) {
                         // Timed out
@@ -141,12 +181,18 @@ export default class GunUser {
                 clearTimeout(timer);
             }) as IGunChainReference;
         });
+
+        return Promise.race([
+            loginAction,
+            this.onLogin(gun)
+        ]);
     }
 
     private static async _getCreatePub(
         { alias, pass, newPass }: GunUserCredentials & { newPass?: string },
         gun: IGunChainReference
     ): Promise<string> {
+        validateGun(gun);
         return new Promise((resolve, reject) => {
             let resolveOnce: (typeof resolve) | undefined = resolve;
             let rejectOnce: (typeof reject) | undefined = reject;
@@ -161,7 +207,6 @@ export default class GunUser {
                 throw new GunError('Should not be logged in when creating a user');
             }
             
-            fixSea(gun.constructor);
             let ref = gun.user().create(alias, pass, ack => {
                 if (!resolveOnce || !rejectOnce) return;
 
@@ -197,3 +242,9 @@ export default class GunUser {
         }
     }
 }
+
+const validateGun = (gun: any) => {
+    if (!(gun instanceof Gun)) {
+        throw new Error('Must specify a valid gun instance');
+    }
+};

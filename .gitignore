@@ -104,6 +104,7 @@ dist
 .tern-port
 
 # Project
+temp/
 package-lock.json
 temp/
 
