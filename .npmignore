@@ -103,6 +103,7 @@ typings/
 .tern-port
 
 # Project
+temp/
 src/
 tests/
 tsconfig.json

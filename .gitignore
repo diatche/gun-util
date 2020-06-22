@@ -105,6 +105,7 @@ dist
 
 # Project
 package-lock.json
+temp/
 
 # Gun
 radata/
