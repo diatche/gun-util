@@ -1,6 +1,7 @@
 import { IGunChainReference } from "gun/types/chain";
 import { InvalidCredentials, GunError, AuthError, UserExists, TimeoutError } from "./errors";
 import { IGunCryptoKeyPair } from "gun/types/types";
+import { fixSea } from "./temp";
 
 const LOGIN_CHECK_DELAY = 500;
 
@@ -45,6 +46,7 @@ export default class GunUser {
      * @param gun 
      */
     static pair(gun: IGunChainReference): IGunCryptoKeyPair {
+        fixSea(gun.constructor);
         let userRef = gun.user() as any;
         return userRef._.sea;
     }
@@ -115,6 +117,7 @@ export default class GunUser {
             }, LOGIN_CHECK_DELAY);
 
             // Begin login
+            fixSea(gun.constructor);
             let ref = gun.user().auth(alias, pass, ack => {
                 if (!resolveOnce || !rejectOnce) return;
 
@@ -158,6 +161,7 @@ export default class GunUser {
                 throw new GunError('Should not be logged in when creating a user');
             }
             
+            fixSea(gun.constructor);
             let ref = gun.user().create(alias, pass, ack => {
                 if (!resolveOnce || !rejectOnce) return;
 

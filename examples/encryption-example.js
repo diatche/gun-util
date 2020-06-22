@@ -10,8 +10,8 @@ let gun = Gun();
 
 (async () => {
     await GunUser.create({
-        alias: Math.random().toString(36).substring(8),
-        pass: 'bar'
+        alias: uuidv4(),
+        pass: uuidv4()
     }, gun);
     let pair = GunUser.pair(gun);
     
