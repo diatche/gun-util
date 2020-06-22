@@ -133,7 +133,7 @@ describe('DateTree #', () => {
                 '2021-01-01',
                 '2021-01-02',
             ];
-            let promises = dates.map(d => tree.put(moment.utc(d), 'a').then!())
+            let promises = dates.map(d => tree.get(moment.utc(d)).put('a' as never).then!())
             await Promise.all(promises);
             let receivedDates = compsStack
                 .map(c => DateTree.getDateWithComponents(c).format('YYYY-MM-DD'))
@@ -160,7 +160,7 @@ describe('DateTree #', () => {
                 '2020-02-01',
             ];
             for (let date of dates) {
-                await tree.put(moment.utc(date), 'a').then!()
+                await tree.get(moment.utc(date)).put('a' as never).then!();
                 if (date === '2020-01-06') {
                     off();
                 }

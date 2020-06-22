@@ -73,16 +73,6 @@ export default class DateTree<T = any> {
     }
 
     /**
-     * Puts the value at the date and returns
-     * it's reference.
-     */
-    put(date: DateParsable, value: T, callback?: AckCallback): IGunChainReference<T> {
-        let ref = this.get(date);
-        ref.put(value, callback);
-        return ref;
-    }
-
-    /**
      * Listens to changes about the specified date.
      * 
      * Let's say we want to listen to changes to a blog described

@@ -119,13 +119,25 @@ async function * _fastIterateRecord<V = any, T = Record<any, V>>(
 
     let onComplete = () => {
         isDone = true;
+        cleanUp();
         _resolve();
+    };
+
+    let cleanUp = () => {
+        if (sub) {
+            sub.off();
+            sub = undefined;
+        }
+        if (timer) {
+            clearInterval(timer);
+            timer = undefined;
+        }
     };
 
     // Use `on()` instead of `once()` to customize
     // the waiting interval. Also, `on()` is faster
     // with async data.
-    let sub = ref.map().on((data, key) => {
+    let sub: any = ref.map().on((data, key) => {
         if (keysSeen.has(key)) {
             return;
         }
@@ -140,10 +152,11 @@ async function * _fastIterateRecord<V = any, T = Record<any, V>>(
     if (!sub) {
         // There's nothing at this reference
         // or it has been deleted.
+        cleanUp();
         return;
     }
 
-    let timer = setInterval(() => {
+    let timer: any = setInterval(() => {
         if (!timer) return;
         let now = new Date();
         if (now.valueOf() - lastDataDate.valueOf() > wait) {
@@ -176,10 +189,7 @@ async function * _fastIterateRecord<V = any, T = Record<any, V>>(
     }
 
     // Clean up
-    sub.off();
-    (sub as any) = undefined;
-    clearInterval(timer);
-    (timer as any) = undefined;
+    cleanUp();
 }
 
 /**

@@ -12,6 +12,7 @@ efficient algorithm is used to iterate over the record. However, order is not de
 - `IterateOptions` no longer uses `start`, `end`, `startInclusive`, `endInclusive`. Instead
 `gt`, `gte`, `lt`, `lte` is used. These can be converted to a `Range`, which resemble the previous
 structure (which is still used internally) using `rangeWithFilter()`.
+- Removed redundant `DateTree#.put()`. Use `DateTree#.get().put()` instead.
 
 ## 0.0.5
 

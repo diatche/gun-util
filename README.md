@@ -4,13 +4,13 @@ Convenience and utility methods for [GunDB](https://github.com/amark/gun).
 
 ![Node.js CI](https://github.com/diatche/gun-util/workflows/Node.js%20CI/badge.svg)
 
-*Note that this package is in early stages of development and there may be breaking changes within semantically compatible versions.*
+*Note that this package is in early stages of development and there may be breaking changes within semantically compatible versions. See [change log](CHANGELOG.md).*
 
 ## Installation
 
 Install using yarn with `yarn add gun-util` or npm `npm install gun-util`.
 
-*If you are ES modules, you may need to import from `'date-util/dist/index.mjs'` for imports to work.*
+*If you are using ES modules, you may need to import from `'date-util/dist/index.mjs'` for imports to work.*
 
 ## Documentation
 
@@ -169,7 +169,7 @@ we can call `unsub()` and resubscribe to a later date.
 
 **Other examples**
 
-Have a look at the examples folder.
+Have a look at the [examples folder](examples/).
 
 ### Encryption
 
@@ -208,7 +208,12 @@ let dec = await decrypt(enc, {
 assert(dec.whereami === 'shire');
 ```
 
+**Other examples**
+
+Have a look at the [examples folder](examples/).
+
 ### GunUser
 
 Convenience methods for creating an authenticating a Gun user.
 
+Have a look at the [examples folder](examples/).
