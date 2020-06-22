@@ -3,6 +3,7 @@ import _ from 'lodash';
 import moment, { Moment } from 'moment';
 import { IterateOptions, iterateRefs } from "./iterate";
 import { AckCallback } from "gun/types/types";
+import { rangeWithFilter, filterWithRange } from "./filter";
 
 export type DateUnit = 'year' | 'month' | 'day' | 'hour' | 'minute' | 'second' | 'millisecond';
 
@@ -10,11 +11,16 @@ export const ALL_DATE_UNITS: DateUnit[] = [
     'year', 'month', 'day', 'hour', 'minute', 'second', 'millisecond',
 ];
 
+export const DATE_UNIT_SET = new Set(ALL_DATE_UNITS);
+
 export type DateParsable = Moment | Date | string | number;
 
 const ZERO_DATE = moment.utc().startOf('year').set('year', 1);
 
 type DateComponentsUnsafe = { [res: string]: number };
+type ImmutableDateComponentsUnsafe = {
+    readonly [res: string]: number
+};
 
 /**
  * All date components are natural.
@@ -25,10 +31,7 @@ export type DateComponents = {
     [K in DateUnit]?: number;
 }
 
-export type DateIterateOptions = Omit<IterateOptions, 'start' | 'end'> & {
-    start?: DateParsable;
-    end?: DateParsable;
-};
+export interface DateIterateOptions extends IterateOptions<DateParsable> {}
 
 /**
  * Efficiently distributes and stores data in a tree with nodes using date
@@ -67,16 +70,6 @@ export default class DateTree<T = any> {
             floor = floor.subtract(1, this.resolution);
         }
         return floor;
-    }
-
-    /**
-     * Puts the value at the date and returns
-     * it's reference.
-     */
-    put(date: DateParsable, value: T, callback?: AckCallback): IGunChainReference<T> {
-        let ref = this.get(date);
-        ref.put(value, callback);
-        return ref;
     }
 
     /**
@@ -238,9 +231,8 @@ export default class DateTree<T = any> {
      */
     async next(date?: DateParsable): Promise<[IGunChainReference<T> | undefined, Moment | undefined]> {
         let it = this.iterate({
-            start: date && parseDate(date) || undefined,
-            startInclusive: false,
-            endInclusive: true,
+            gt: date && parseDate(date) || undefined,
+            order: 1,
         });
         for await (let [ref, refDate] of it) {
             if (date) {
@@ -264,10 +256,8 @@ export default class DateTree<T = any> {
      */
     async previous(date?: Moment): Promise<[IGunChainReference<T> | undefined, Moment | undefined]> {
         let it = this.iterate({
-            end: date && parseDate(date) || undefined,
-            startInclusive: true,
-            endInclusive: false,
-            reverse: true,
+            lt: date && parseDate(date) || undefined,
+            order: -1,
         });
         for await (let [ref, refDate] of it) {
             if (date) {
@@ -289,13 +279,14 @@ export default class DateTree<T = any> {
      * @param param0 
      */
     async * iterate(opts: DateIterateOptions = {}): AsyncGenerator<[IGunChainReference<T>, Moment]> {
+        let range = rangeWithFilter(opts);
         let {
             start,
             end,
-            startInclusive = true,
-            endInclusive = false,
-            ...otherOpts
-        } = opts;
+            startClosed,
+            endClosed,
+        } = range;
+        let { order } = opts;
         let ref: IGunChainReference | undefined = this.root;
         let startComps = (start && DateTree.getDateComponents(start, this.resolution) || {}) as Partial<DateComponentsUnsafe>;
         let endComps = (end && DateTree.getDateComponents(end, this.resolution) || {}) as Partial<DateComponentsUnsafe>;
@@ -316,16 +307,19 @@ export default class DateTree<T = any> {
                 unit
             );
             let atLeaf = unitIndex === unitsLen - 1;
-            let unitStartInclusive = startInclusive || !atLeaf;
-            let unitEndInclusive = endInclusive || !atLeaf;
+            let unitStartInclusive = startClosed || !atLeaf;
+            let unitEndInclusive = endClosed || !atLeaf;
             if (ref) {
                 // Queue another node for iteration
-                it = this._iterateRef(ref, {
-                    ...otherOpts,
+                let filter = filterWithRange({
                     start: DateTree.encodeDateComponent(startVal, unit),
                     end: DateTree.encodeDateComponent(endVal, unit),
-                    startInclusive: unitStartInclusive,
-                    endInclusive: unitEndInclusive,
+                    startClosed: unitStartInclusive,
+                    endClosed: unitEndInclusive,
+                });
+                it = this._iterateRef(ref, {
+                    ...filter,
+                    order,
                 });
                 itStack.unshift(it);
                 ref = undefined;
@@ -534,7 +528,7 @@ export default class DateTree<T = any> {
 
     static isResolution(resolution: any): resolution is DateUnit {
         if (typeof resolution !== 'string') return false;
-        return ALL_DATE_UNITS.indexOf(resolution as DateUnit) >= 0;
+        return DATE_UNIT_SET.has(resolution as DateUnit);
     }
 }
 
@@ -563,21 +557,45 @@ const nativeDateValue = (value: number, res: DateUnit): number => {
     return value;
 };
 
-const MAX_DATE_COMPS: DateComponentsUnsafe = (() => {
-    let maxDate = moment.utc().endOf('year');
-    let units = _.without(ALL_DATE_UNITS, 'year');
-    return _.zipObject(units, units.map(r => graphDateValue(maxDate.get(nativeDateUnit(r)), r) + 1));
+/** The minimum (inclusive) date component values. */
+const MIN_DATE_COMPONENTS: Omit<{ readonly [K in DateUnit]: number }, 'year'> = (() => {
+    let maxDate = moment.utc().startOf('year');
+    let units = ALL_DATE_UNITS.slice(1);
+    return _.zipObject(units, units.map(r => graphDateValue(maxDate.get(nativeDateUnit(r)), r))) as any;
 })();
 
-const DATE_COMP_PADS = (() => {
-    let pads: { [unit: string]: number } = {
+/** The maximum (exclusive) date component values. */
+const MAX_DATE_COMPONENTS: Omit<{ readonly [K in DateUnit]: number }, 'year'> = (() => {
+    let maxDate = moment.utc().endOf('year');
+    let units = ALL_DATE_UNITS.slice(1);
+    return _.zipObject(units, units.map(r => graphDateValue(maxDate.get(nativeDateUnit(r)), r) + 1)) as any;
+})();
+
+const DATE_COMP_PADS: { readonly [K in DateUnit]: number } = (() => {
+    let pads: Partial<{ [K in DateUnit]: number }> = {
         year: 4
     };
     for (let unit of ALL_DATE_UNITS) {
-        if (unit in MAX_DATE_COMPS) {
-            let max = MAX_DATE_COMPS[unit] - 1;
+        if (unit !== 'year') {
+            let max = MAX_DATE_COMPONENTS[unit] - 1;
             pads[unit] = max.toString().length;
         }
     }
-    return pads;
+    return pads as { [K in DateUnit]: number };
 })();
+
+// /** The set of all possible keys of a date component. */
+// const DATE_COMPONENT_KEY_SETS: Omit<{ readonly [K in DateUnit]: Set<string> }, 'year'> = (() => {
+//     let sets: Partial<Omit<{ [K in DateUnit]: Set<string> }, 'year'>> = {};
+//     for (let unit of ALL_DATE_UNITS) {
+//         if (unit === 'year') continue;
+//         let min = MIN_DATE_COMPONENTS[unit];
+//         let max = MIN_DATE_COMPONENTS[unit];
+//         let set = new Set<string>();
+//         for (let i = min; i < max; i++) {
+//             set.add(DateTree.encodeDateComponent(i, unit)!);
+//         }
+//         sets[unit] = set;
+//     }
+//     return sets as Omit<{ readonly [K in DateUnit]: Set<string> }, 'year'>;
+// })();

@@ -1,14 +1,32 @@
 import { IGunChainReference } from "gun/types/chain";
 import _ from "lodash";
+import {
+    Filter,
+    rangeWithFilter,
+    isValueRangeEmpty,
+    filterKey,
+    filteredIndexRange,
+} from "./filter";
 
-export interface IterateOptions {
-    start?: string;
-    end?: string;
-    /** True by default. */
-    startInclusive?: boolean;
-    /** False by default. */
-    endInclusive?: boolean;
-    reverse?: boolean;
+const WAIT_DEFAULT = 99;
+const ASC_SORT = 1;
+const DES_SORT = -1;
+
+export interface IterateOptions<T=string> extends Filter<T> {
+    /**
+     * Possible values:
+     * 1. Positive number: Ascending order.
+     * 2. Negative number: Desccending order.
+     * 3. Zero or undefined: Defaults to ascending order when
+     * ordering is guaranteed, otherwise order is not defined.
+     */
+    order?: number;
+    /**
+     * After this time interval (ms), no more
+     * data is returned. Defaults to Gun's default
+     * of 99 ms.
+     **/
+    wait?: number;
 }
 
 /**
@@ -25,38 +43,194 @@ export async function iterateAll<T>(it: AsyncIterable<T>): Promise<T[]> {
 }
 
 /**
- * Iterate over the inner keys of a record at a Gun node reference.
+ * Iterates over the inner keys of a record at a Gun node reference.
+ * Behaviour is different if ordering is required, which is specified by
+ * setting `opt.order` to a non zero value.
  * 
- * Note that keys are not guaranteed to be in order if there
- * is more than one connected peer.
+ * **1. If order is specified:**
+ * 
+ * Iterates over the inner keys of a record at a Gun node reference,
+ * by loading the whole record.
+ * 
+ * Note that keys are guaranteed to be in order, but if a peer
+ * fails to reply within the `wait` period, the item [value, key] will
+ * skipped. A second pass is necessary to get these skipped items.
+ * 
+ * Filtering using [Gun's lexical wire spec](https://gun.eco/docs/RAD#lex)
+ * is **not** supported (as at Gun v0.2020.520).
+ * 
+ * **2. If order is not specified:**
+ * 
+ * This is faster than without ordering, but it sacrifices guaranteed
+ * ascending order of data by key. This is the case if there is more
+ * than one connected peer.
+ * 
+ * Filtering using [Gun's lexical wire spec](https://gun.eco/docs/RAD#lex)
+ * is supported.
  * 
  * @param ref Gun node reference
  **/
-export async function * iterateRecord<V = any, T = Record<any, V>>(
+export function iterateRecord<V = any, T = Record<any, V>>(
+    ref: IGunChainReference<T>,
+    opts: IterateOptions = {},
+): AsyncGenerator<[V, string]> {
+    if (!!opts.order) {
+        return _iterateSortedRecord(ref, opts);
+    } else {
+        return _fastIterateRecord(ref, opts);
+    }
+}
+
+/**
+ * Iterates over the inner keys of a record at a Gun node reference.
+ * 
+ * Filtering using [Gun's lexical wire spec](https://gun.eco/docs/RAD#lex)
+ * is supported.
+ * 
+ * This method is faster than {@link iterateRecord}, but it sacrifices
+ * guaranteed sorting of data by key. This is the case if there is more
+ * than one connected peer.
+ * 
+ * @param ref Gun node reference
+ **/
+async function * _fastIterateRecord<V = any, T = Record<any, V>>(
+    ref: IGunChainReference<T>,
+    opts: IterateOptions = {},
+): AsyncGenerator<[V, string]> {
+    let isDone = false;
+    let keysSeen = new Set<string>();
+    let batch: [V, string][] = [];
+    let resolver: (() => void) | undefined;
+    let nextBatchReady: Promise<void> | undefined;
+    let lastDataDate = new Date();
+    let { wait = WAIT_DEFAULT } = opts;
+
+    let range = rangeWithFilter(opts);
+    if (isValueRangeEmpty(range)) {
+        return;
+    }
+
+    let _resolve = () => {
+        let resolve = resolver;
+        resolver = undefined;
+        resolve && resolve();
+        nextBatchReady = undefined;
+    }
+
+    let onComplete = () => {
+        isDone = true;
+        cleanUp();
+        _resolve();
+    };
+
+    let cleanUp = () => {
+        if (sub) {
+            sub.off();
+            sub = undefined;
+        }
+        if (timer) {
+            clearInterval(timer);
+            timer = undefined;
+        }
+    };
+
+    // Use `on()` instead of `once()` to customize
+    // the waiting interval. Also, `on()` is faster
+    // with async data.
+    let sub: any = ref.map().on((data, key) => {
+        if (keysSeen.has(key)) {
+            return;
+        }
+        keysSeen.add(key);
+        lastDataDate = new Date();
+        if (filterKey(key, range)) {
+            batch.push([data as V, key]);
+            _resolve();
+        }
+    });
+
+    if (!sub) {
+        // There's nothing at this reference
+        // or it has been deleted.
+        cleanUp();
+        return;
+    }
+
+    let timer: any = setInterval(() => {
+        if (!timer) return;
+        let now = new Date();
+        if (now.valueOf() - lastDataDate.valueOf() > wait) {
+            // It's been to long since any new data, assume completed.
+            clearInterval(timer);
+            onComplete();
+        }
+    }, wait);
+
+    while (!isDone || batch.length !== 0) {
+        // How does the generator break out of the loop early?
+        // Explanation: https://stackoverflow.com/a/43424286/328356
+        while (batch.length !== 0) {
+            yield batch.shift()!;
+        }
+        if (isDone) {
+            break;
+        }
+        if (!nextBatchReady) {
+            nextBatchReady = new Promise((resolve, reject) => {
+                if (isDone) {
+                    resolve();
+                } else {
+                    resolver = resolve;
+                }
+            });
+        }
+        // Wait for next value promise
+        await nextBatchReady;
+    }
+
+    // Clean up
+    cleanUp();
+}
+
+/**
+ * Iterates over the inner keys of a record at a Gun node reference,
+ * by loading the whole record.
+ * 
+ * Note that keys are guaranteed to be in order, but if a peer
+ * fails to reply within the `wait` period, the item [value, key] will
+ * skipped. A second pass is necessary to get these skipped items.
+ * 
+ * Filtering using [Gun's lexical wire spec](https://gun.eco/docs/RAD#lex)
+ * is **not** supported (as at Gun v0.2020.520). Use {@link scanRecord}
+ * instead, if you need to filter in this way.
+ * 
+ * @param ref Gun node reference
+ **/
+async function * _iterateSortedRecord<V = any, T = Record<any, V>>(
     ref: IGunChainReference<T>,
     opts: IterateOptions = {},
 ): AsyncGenerator<[V, string]> {
     let {
-        start,
-        end,
-        startInclusive = true,
-        endInclusive = false,
-        reverse = false,
+        order = ASC_SORT,
+        wait = WAIT_DEFAULT,
     } = opts;
 
-    if (typeof start !== 'undefined' && typeof end !== 'undefined') {
-        if (start === end && !(startInclusive && endInclusive)) {
-            return;
-        } else if (start > end) {
-            throw new Error('Start value must be less than end value');
-        }
+    let range = rangeWithFilter(opts);
+    if (isValueRangeEmpty(range)) {
+        return;
     }
 
-    // TODO: To avoid fetching too much data at once,
-    // use GUN's lexical wire spec to filter and or batch: https://gun.eco/docs/RAD
-
     // Get list of keys:
-    let obj: any = await ref.then!();
+    // Prefer using `once` instead of `then` to allow
+    // customizing `wait`.
+    let obj: any = await new Promise((resolve, reject) => {
+        let res = ref.once((data, key) => {
+            resolve(data);
+        }, { wait });
+        if (!res) {
+            resolve(undefined);
+        }
+    });
     if (typeof obj === 'undefined' || obj === null) {
         return;
     }
@@ -65,46 +239,25 @@ export async function * iterateRecord<V = any, T = Record<any, V>>(
     }
     // Remove meta
     obj = _.omit(obj, '_');
-    
     let keys = Object.keys(obj).sort();
-    let len = keys.length;
-    if (len === 0) {
-        return;
-    }
 
     // Find iteration bounds
-    let iStart = 0;
-    if (typeof start !== 'undefined') {
-        iStart = _.sortedIndex(keys, start);
-        let key = keys[iStart];
-        if (key <= start && !startInclusive) {
-            iStart += 1;
-        }
-    }
-    let iEnd = len - 1;
-    if (typeof end !== 'undefined') {
-        iEnd = _.sortedIndex(keys, end);
-        let key = keys[iEnd];
-        if (key >= end && !endInclusive) {
-            iEnd -= 1;
-        }
-        iEnd = Math.min(iEnd, len - 1);
-    }
-    if (iStart > iEnd) {
+    let [iStart, iEnd] = filteredIndexRange(keys, range);
+    if (iStart >= iEnd) {
         return;
     }
 
     // Iterate
     let key: string;
-    if (!reverse) {
+    if (order >= 0) {
         // Natural direction
-        for (let i = iStart; i <= iEnd; i++) {
+        for (let i = iStart; i < iEnd; i++) {
             key = keys[i];
             yield [obj[key], key];
         }
     } else {
         // Reverse direction
-        for (let i = iEnd; i >= iStart; i--) {
+        for (let i = iEnd - 1; i >= iStart; i--) {
             key = keys[i];
             yield [obj[key], key];
         }
@@ -120,7 +273,7 @@ export async function * iterateRecord<V = any, T = Record<any, V>>(
  * 
  * @param ref Gun node reference
  **/
-export async function * iterateRefs<T = any>(
+export async function* iterateRefs<T = any>(
     ref: IGunChainReference<T[] | Record<any, T>>,
     opts?: IterateOptions,
 ): AsyncGenerator<[IGunChainReference<T>, string]> {
@@ -140,7 +293,7 @@ export async function * iterateRefs<T = any>(
  * 
  * @param ref Gun node reference
  **/
-export async function * iterateItems<T = any>(
+export async function* iterateItems<T = any>(
     ref: IGunChainReference<T[] | Record<any, T>>,
     opts?: IterateOptions,
 ): AsyncGenerator<[T, string]> {
@@ -162,7 +315,7 @@ export async function * iterateItems<T = any>(
  * 
  * @param ref Gun node reference
  **/
-export async function * iterateValues<T = any>(
+export async function* iterateValues<T = any>(
     ref: IGunChainReference<T[] | Record<any, T>>,
     opts?: IterateOptions,
 ): AsyncGenerator<T> {
@@ -180,7 +333,7 @@ export async function * iterateValues<T = any>(
  * 
  * @param ref Gun node reference
  **/
-export async function * iterateKeys(
+export async function* iterateKeys(
     ref: IGunChainReference,
     opts?: IterateOptions,
 ): AsyncGenerator<string> {

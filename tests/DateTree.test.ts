@@ -1,7 +1,7 @@
 import { IGunChainReference } from "gun/types/chain";
 import { TEST_GUN_OPTIONS } from "../src/const";
 import Gun from "gun";
-import { DateTree, DateComponents } from "../src";
+import DateTree, { DateComponents } from "../src/DateTree";
 import moment from "moment";
 import _ from "lodash";
 import { v4 as uuidv4 } from 'uuid';
@@ -133,7 +133,7 @@ describe('DateTree #', () => {
                 '2021-01-01',
                 '2021-01-02',
             ];
-            let promises = dates.map(d => tree.put(moment.utc(d), 'a').then!())
+            let promises = dates.map(d => tree.get(moment.utc(d)).put('a' as never).then!())
             await Promise.all(promises);
             let receivedDates = compsStack
                 .map(c => DateTree.getDateWithComponents(c).format('YYYY-MM-DD'))
@@ -160,7 +160,7 @@ describe('DateTree #', () => {
                 '2020-02-01',
             ];
             for (let date of dates) {
-                await tree.put(moment.utc(date), 'a').then!()
+                await tree.get(moment.utc(date)).put('a' as never).then!();
                 if (date === '2020-01-06') {
                     off();
                 }
@@ -202,10 +202,9 @@ describe('DateTree #', () => {
         it('should iterate over refs in date range', async () => {
             let refTable: any = {};
             let it = tree.iterate({
-                start: moment.utc('2010-11-30'),
-                end: moment.utc('2011-01-04'),
-                startInclusive: true,
-                endInclusive: false,
+                gte: moment.utc('2010-11-30'),
+                lt: moment.utc('2011-01-04'),
+                order: 1,
             });
             for await (let [ref, date] of it) {
                 refTable[date.format('YYYY-MM-DD')] = ref;

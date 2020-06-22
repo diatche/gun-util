@@ -1,6 +1,7 @@
 export * from './DateTree';
 export { default as DateTree } from './DateTree';
 export * from './encryption';
+export * from './filter';
 export * from './errors';
 export * from './const';
 export * from './iterate';
