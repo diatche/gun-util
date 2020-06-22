@@ -92,7 +92,7 @@ tree.get('2020-01-16 05:45').put({ event: 'earlybird' });
     // A naive implementation would have close to a billion
     // nodes and would take forever to iterate.
     // This takes only a second:
-    for await (let [ref, date] of tree.iterate()) {
+    for await (let [ref, date] of tree.iterate({ order: 1 })) {
         let event = await ref.get('event').then();
         console.log(`${date} event: ${event}`);
     }
@@ -109,7 +109,7 @@ Filtering by date range and reverse iteration is possible using options:
 tree.iterate({
     gte: '2020-01-01',
     lt: '2020-02-01',
-    reverse: true
+    order: -1
 })
 ```
 

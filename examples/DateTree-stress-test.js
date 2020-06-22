@@ -1,6 +1,7 @@
-import Gun from 'gun';
-import { DateTree } from '../dist/index.mjs';
-import moment from 'moment';
+const Gun = require('gun');
+const { v4: uuidv4 } = require('uuid');
+const { DateTree } = require('../dist');
+const moment = require('moment');
 
 let gun = Gun();
 let treeRoot = gun.get('tree-stress');
@@ -15,7 +16,7 @@ let puts = []
 
 while (date.isBefore(end)) {
     let put = tree.get(date).put({
-        data: Math.random().toString(36).substring(7)
+        data: uuidv4()
     });
     date.add(1, resolution);
     puts.push(put.then());
@@ -47,9 +48,9 @@ while (date.isBefore(end)) {
     console.log(`Fetched ${count} records in ${time} s at ${rate} records/s`);
 
     // Output:
-    // Tue Dec 31 2019 00:00:00 GMT+0000: vn6tt
-    // Fri Jan 01 2010 00:00:00 GMT+0000: 30mwuq
-    // Fetched 3652 records in 15 s at 243.47 records/s
+    // Fri Jan 01 2010 00:00:00 GMT+0000: 621158bc-aa17-4e86-833f-e624754b90f4
+    // Tue Dec 31 2019 00:00:00 GMT+0000: beedaeeb-4e8b-4cbc-b669-0d3f7468a6f8
+    // Fetched 3652 records in 11 s at 332 records/s
 })().then(() => process.exit(0));
 
 // Delete your radata folder (Gun's local storage) if you see unexpected logs

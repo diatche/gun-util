@@ -1,9 +1,10 @@
-import Gun from 'gun';
-import {
+const Gun = require('gun');
+const { v4: uuidv4 } = require('uuid');
+const {
     encrypt,
     decrypt,
     GunUser,
-} from '../dist/index.mjs';
+} = require('../dist');
 
 let gun = Gun();
 
