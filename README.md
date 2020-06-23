@@ -18,7 +18,7 @@ Install using yarn with `yarn add gun-util` or npm `npm install gun-util`.
 
 1. [DateTree](#DateTree)
 2. [Encryption](#Encryption)
-3. [GunUser](#GunUser)
+3. [Auth](#Auth)
 
 ### DateTree
 
@@ -212,7 +212,7 @@ assert(dec.whereami === 'shire');
 
 Have a look at the [examples folder](examples/).
 
-### GunUser
+### Auth
 
 Convenience methods for creating an authenticating a Gun user.
 

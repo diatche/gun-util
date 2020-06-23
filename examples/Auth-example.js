@@ -1,12 +1,11 @@
 const Gun = require('gun');
 const { v4: uuidv4 } = require('uuid');
-const {
-    GunUser,
-} = require('../dist');
+const { Auth } = require('../dist');
 
 let gun = Gun();
+let auth = Auth.default(gun);
 
-GunUser.onLogin(gun).then(pub => {
+auth.onAuth(gun).then(pub => {
     console.log('Detected login: ' + pub);
 });
 
@@ -16,12 +15,15 @@ GunUser.onLogin(gun).then(pub => {
         alias: uuidv4(),
         pass: uuidv4(),
     };
-    let pub = await GunUser.create(creds, gun);
+    let pub = await auth.create(creds, gun);
     console.log('account created: ' + pub);
-    GunUser.logout(gun);
+    auth.logout(gun);
     console.log('login...');
-    pub = await GunUser.login(creds, gun);
+    pub = await auth.login(creds, gun);
     console.log('Logged in: ' + pub);
 })()
-    .catch(e => console.error(e + ''))
-    .then(() => process.exit(0));
+    .then(() => process.exit(0))
+    .catch(e => {
+        console.error(e + '');
+        process.exit(1);
+    });
