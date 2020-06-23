@@ -1,19 +1,13 @@
 const Gun = require('gun');
-const { v4: uuidv4 } = require('uuid');
 const {
     encrypt,
     decrypt,
-    GunUser,
 } = require('../dist');
 
-let gun = Gun();
-
 (async () => {
-    await GunUser.create({
-        alias: Math.random().toString(36).substring(8),
-        pass: 'bar'
-    }, gun);
-    let pair = GunUser.pair(gun);
+    // You can use SEA pair or you can
+    // get it from the user as well.
+    let pair = await Gun.SEA.pair();
     
     let enc = await encrypt('a@a.com', { pair });
     console.log('enc: ' + enc);

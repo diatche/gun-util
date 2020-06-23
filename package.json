@@ -45,13 +45,16 @@
     "@types/jest": "^25.2.3",
     "@types/lodash": "^4.14.155",
     "@types/uuid": "^3.4.0",
+    "bufferutil": "^4.0.1",
     "gun": "git+https://github.com/amark/gun.git#3e678b8568a4a8a825b84b26759d4dd4f3b0988e",
     "jest": "^26.0.1",
     "lodash": "^4.17.15",
     "rollup": "^2.16.1",
     "rollup-plugin-typescript2": "^0.27.1",
+    "text-encoding": "^0.7.0",
     "ts-jest": "^26.1.0",
     "typescript": "^3.9.3",
+    "utf-8-validate": "^5.0.2",
     "uuid": "^3.4.0"
   }
 }
