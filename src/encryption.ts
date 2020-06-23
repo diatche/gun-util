@@ -3,8 +3,8 @@ import _ from 'lodash';
 import { IGunCryptoKeyPair } from 'gun/types/types';
 
 interface CryptOptionsBase {
-    pair?: IGunCryptoKeyPair,
-    secret?: any,
+    pair?: IGunCryptoKeyPair;
+    secret?: any;
 }
 
 interface EncryptOptionsBase extends CryptOptionsBase {

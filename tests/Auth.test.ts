@@ -3,7 +3,9 @@ import { IGunChainReference } from 'gun/types/chain';
 import { TEST_GUN_OPTIONS } from '../src/const';
 import { InvalidCredentials, UserExists, AuthError } from '../src/errors';
 import Gun from 'gun';
-import uuid, { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
+import { IGunCryptoKeyPair } from 'gun/types/types';
+import { isGunAuthPairSupported } from '../src/support';
 
 let gun: IGunChainReference;
 let auth: Auth;
@@ -112,8 +114,12 @@ describe('Auth', () => {
 
         describe('login', () => {
 
+            let pair: IGunCryptoKeyPair;
+
             beforeEach(async () => {
                 await auth.create(creds);
+                pair = auth.pair()!;
+                expect(pair).toBeTruthy();
                 auth.logout();
             });
 
@@ -122,11 +128,38 @@ describe('Auth', () => {
                 expect(user).toBeTruthy();
             });
 
+            it('should log in an existing user with pair', async () => {
+                if (isGunAuthPairSupported(gun)) {
+                    let user = await auth.login(pair);
+                    expect(user).toBeTruthy();
+                    expect(auth.pair()).toMatchObject(pair);
+                } else {
+                    console.warn('Gun.auth with pair is not supported');
+                }
+            });
+
             it('should not log in an existing user with incorrect alias', async () => {
                 let user: string | undefined;
                 let loginError: Error | undefined;
                 try {
                     user = await auth.login({ ...creds, pass: 'foo' });
+                } catch (error) {
+                    loginError = error;
+                }
+                expect(user).toBeFalsy();
+                expect(loginError).toBeInstanceOf(InvalidCredentials);
+            });
+
+            it.skip('should not log in an existing user with incorrect pair', async () => {
+                let user: string | undefined;
+                let loginError: Error | undefined;
+                try {
+                    user = await auth.login({
+                        pub: 'foo',
+                        priv: 'bar',
+                        epub: 'gaz',
+                        epriv: 'roo'
+                    });
                 } catch (error) {
                     loginError = error;
                 }
@@ -205,6 +238,35 @@ describe('Auth', () => {
                     pub = (ack as any).sea.pub;
                     expect(pub).toBeTruthy();
                 });
+            });
+        });
+
+        describe('recall', () => {
+
+            beforeAll(() => {
+                let storedPair: any;
+                auth.delegate = {
+                    storePair: async (pair, _auth) => {
+                        storedPair = pair;
+                        expect(pair).toBeTruthy();
+                        expect(_auth).toStrictEqual(auth);
+                    },
+                    recallPair: (_auth) => {
+                        expect(_auth).toStrictEqual(auth);
+                        return storedPair;
+                    },
+                }
+            });
+
+            afterAll(() => {
+                auth.delegate = undefined;
+            });
+
+            it('should login the last user', async () => {
+                let pub = await auth.create(creds);
+                auth.logout();
+                let pub2 = await auth.recall();
+                expect(pub2).toEqual(pub);
             });
         });
 

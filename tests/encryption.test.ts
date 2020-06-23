@@ -51,9 +51,9 @@ describe('encryption', () => {
 
         it('should encrypt/decrypt a value', async () => {
             await auth.create(newCreds());
-            let enc = await encrypt('a@a.com', { pair: auth.pair() });
-            expect(enc).toMatch(/^SEA\{[^\}]*\}$/g);
-            let dec = await decrypt(enc, { pair: auth.pair() });
+            let enc = await encrypt('a@a.com', { pair: auth.pair()! });
+            expect(enc).toMatch(/^SEA\{.*\}$/g);
+            let dec = await decrypt(enc, { pair: auth.pair()! });
             expect(dec).toEqual('a@a.com');
         });
 
@@ -61,11 +61,11 @@ describe('encryption', () => {
             let pub = await auth.create(newCreds());
             userRef = gun.user(pub) as any;
             let orig = Gun.node.ify({ a: 'a1', b: 'b1' });
-            let enc = await encrypt(orig, { pair: auth.pair() });
+            let enc = await encrypt(orig, { pair: auth.pair()! });
             expect(Object.keys(enc).length).toBe(3);
-            expect(enc.a).toMatch(/^SEA\{[^\}]*\}$/g);
-            expect(enc.b).toMatch(/^SEA\{[^\}]*\}$/g);
-            expect(await decrypt(enc, { pair: auth.pair() })).toMatchObject(orig);
+            expect(enc.a).toMatch(/^SEA\{.*\}$/g);
+            expect(enc.b).toMatch(/^SEA\{.*\}$/g);
+            expect(await decrypt(enc, { pair: auth.pair()! })).toMatchObject(orig);
         });
 
         it('should encrypt/decrypt a value for another user', async () => {
@@ -84,16 +84,16 @@ describe('encryption', () => {
             // [0] encrypts email for [1]
             await auth.login(creds[0]);
             let encFor1 = await encrypt('a@a.com', {
-                pair: auth.pair(),
+                pair: auth.pair()!,
                 recipient: { epub: epubs[1] }
             });
-            expect(encFor1).toMatch(/^SEA\{[^\}]*\}$/g);
+            expect(encFor1).toMatch(/^SEA\{.*\}$/g);
             auth.logout();
 
             // [1] decrypts
             await auth.login(creds[1]);
             let dec1 = await decrypt(encFor1, {
-                pair: auth.pair(),
+                pair: auth.pair()!,
                 sender: { epub: epubs[0] }
             });
             expect(dec1).toBe('a@a.com');
@@ -104,7 +104,7 @@ describe('encryption', () => {
             let error: any;
             try {
                 await decrypt(encFor1, {
-                    pair: auth.pair(),
+                    pair: auth.pair()!,
                     sender: { epub: epubs[0] }
                 });
             } catch (e) {

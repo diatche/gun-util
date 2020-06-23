@@ -2,6 +2,7 @@ import Gun from "gun";
 import { IGunChainReference } from "gun/types/chain";
 import { InvalidCredentials, GunError, AuthError, UserExists, TimeoutError } from "./errors";
 import { IGunCryptoKeyPair } from "gun/types/types";
+import { isGunAuthPairSupported, isPlatformWeb } from "./support";
 
 const LOGIN_CHECK_DELAY = 500;
 
@@ -10,11 +11,21 @@ export interface UserCredentials {
     pass: string
 }
 
+export interface AuthDelegate {
+
+    /** The receiver should securely store the pair. */
+    storePair?: (pair: IGunCryptoKeyPair, auth: Auth) => Promise<void> | void;
+
+    /** The receiver should recover the store pair if available. */
+    recallPair?: (auth: Auth) => Promise<IGunCryptoKeyPair | undefined> | IGunCryptoKeyPair | undefined;
+}
+
 /**
  * Convenience methods for creating an authenticating a Gun user.
  */
 export default class Auth {
     readonly gun: IGunChainReference;
+    delegate?: AuthDelegate;
 
     static defaultGun: IGunChainReference | undefined;
 
@@ -84,7 +95,7 @@ export default class Auth {
      * Login an existing user.
      * @param creds
      */
-    async login(creds: UserCredentials): Promise<string> {
+    async login(creds: UserCredentials | IGunCryptoKeyPair): Promise<string> {
         this.logout();
         return this._authBlock(async () => {
             return await this._login(creds);
@@ -96,6 +107,7 @@ export default class Auth {
      * @param creds 
      */
     async create(creds: UserCredentials): Promise<string> {
+        this.logout();
         return this._authBlock(async () => {
             return await this._create(creds);
         });
@@ -106,7 +118,17 @@ export default class Auth {
      */
     async recall(): Promise<string | undefined> {
         return this._authBlock(async () => {
-            return await this._recall();
+            if (this.delegate?.recallPair) {
+                let pair = await this.delegate?.recallPair(this);
+                if (pair) {
+                    // Auth with pair
+                    return await this._login(pair);
+                }
+            } else if (isPlatformWeb()) {
+                return await this._recallSessionStorage();
+            } else {
+                return undefined;
+            }
         });
     }
 
@@ -131,6 +153,7 @@ export default class Auth {
     async changePass(
         creds: UserCredentials & { newPass: string }
     ): Promise<string> {
+        this.logout();
         return this._authBlock(async () => {
             return await this._create(creds);
         });
@@ -160,7 +183,7 @@ export default class Auth {
     private static _default: Auth | undefined;
 
     private async _login(
-        { alias, pass }: UserCredentials
+        creds: UserCredentials | IGunCryptoKeyPair
     ): Promise<string> {
         let loginAction = new Promise<string>((resolve, reject) => {
             let resolveOnce: (typeof resolve) | undefined = resolve;
@@ -179,7 +202,7 @@ export default class Auth {
             }, LOGIN_CHECK_DELAY);
 
             // Begin login
-            this.gun.user().auth(alias, pass, ack => {
+            let cb = (ack: any) => {
                 if (!resolveOnce || !rejectOnce) return;
 
                 if ('err' in ack) {
@@ -201,7 +224,24 @@ export default class Auth {
                 resolveOnce = undefined;
                 rejectOnce = undefined;
                 clearTimeout(timer);
-            }) as IGunChainReference;
+            };
+
+            let user: any = this.gun.user();
+            let { alias, pass } = {
+                alias: '',
+                pass: '',
+                ...creds
+            };
+            if (alias && pass) {
+                // Supported with Gun v0.2020.520 and prior.
+                user.auth(alias, pass, cb);
+            } else {
+                // Supported after Gun v0.2020.520.
+                if (!isGunAuthPairSupported(this.gun)) {
+                    throw new Error('This version of Gun only supports auth with alias and pass');
+                }
+                user.auth(creds, cb);
+            }
         });
 
         return Promise.race([
@@ -210,27 +250,29 @@ export default class Auth {
         ]);
     }
 
-    private async _recall(): Promise<string> {
-        let recallAction = new Promise<string>((resolve, reject) => {
+    private async _recallSessionStorage(
+        { timeout }: { timeout?: number } = {}
+    ): Promise<string | undefined> {
+        let recallAction = new Promise<string | undefined>((resolve, reject) => {
             let resolveOnce: (typeof resolve) | undefined = resolve;
             let rejectOnce: (typeof reject) | undefined = reject;
 
-            // Check for login ahead of time
-            let timer = setTimeout(() => {
-                if (!resolveOnce) return;
-                let pub = this.pub();
-                if (pub) {
-                    // Instant login
+            let timer: any;
+            if (timeout) {
+                timer = setTimeout(() => {
+                    if (!resolveOnce) return;
+                    let pub = this.pub();
+                    // Login or bail
                     resolveOnce(pub);
                     resolveOnce = undefined;
                     rejectOnce = undefined;
-                }
-            }, LOGIN_CHECK_DELAY);
+                }, timeout);
+            }
 
             // Begin login
             let opts = {
                 sessionStorage: true,
-            }
+            };
             this.gun.user().recall(opts, ack => {
                 if (!resolveOnce || !rejectOnce) return;
 
@@ -253,7 +295,7 @@ export default class Auth {
                 resolveOnce = undefined;
                 rejectOnce = undefined;
                 clearTimeout(timer);
-            }) as IGunChainReference;
+            });
         });
 
         return Promise.race([
@@ -271,8 +313,7 @@ export default class Auth {
                 options.change = newPass;
             }
 
-            let previousPub = this.pub();
-            if (!newPass && previousPub) {
+            if (this.pub()) {
                 throw new GunError('Should not be logged in when creating a user');
             }
             
@@ -280,7 +321,7 @@ export default class Auth {
                 if ('err' in ack) {
                     // Check for login anyway
                     let pub = this.pub();
-                    if (pub !== previousPub) {
+                    if (pub) {
                         // Actually created user
                         resolve(pub);
                     } else {
@@ -289,7 +330,7 @@ export default class Auth {
                 } else {
                     resolve(ack.pub);
                 }
-            }, options) as IGunChainReference;
+            }, options);
         });
 
         return Promise.race([
@@ -330,6 +371,12 @@ export default class Auth {
             this._onAuthResolver = undefined;
             this._onAuth$ = undefined;
             resolve(pub);
+            if (this.delegate?.storePair) {
+                let pair = this.pair();
+                if (pair) {
+                    this.delegate.storePair(pair, this);
+                }
+            }
         }
         return pub;
     }
