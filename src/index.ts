@@ -1,5 +1,5 @@
 export * from './Auth';
-export { default as GunUser } from './Auth';
+export { default as Auth } from './Auth';
 export * from './const';
 export * from './DateTree';
 export { default as DateTree } from './DateTree';
