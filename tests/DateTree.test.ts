@@ -193,19 +193,46 @@ describe('DateTree #', () => {
             await Promise.all(promises);
         });
 
-        it('should iterate over refs in date range', async () => {
-            let refTable: any = {};
+        it('should iterate over refs in date range without order', async () => {
+            let it = tree.iterate({
+                gte: moment.utc('2010-11-30'),
+                lt: moment.utc('2011-01-04'),
+            });
+            let refs: any[] = [];
+            let dates: any[] = [];
+            for await (let [ref, date] of it) {
+                refs.push(ref);
+                dates.push(date.format('YYYY-MM-DD'));
+            }
+
+            // Check dates in ascending order
+            let expectedData = _.omit(data, [
+                '2010-10-20',
+                '2011-01-04',
+            ]);
+            expect(_.sortBy(dates)).toEqual(Object.keys(expectedData).sort());
+
+            // Check refs
+            for (let [ref, date] of _.zip(refs, dates)) {
+                let value = await ref.then!();
+                expect(value).toBe(data[date]);
+            }
+        });
+
+        it('should iterate over refs in date range in order', async () => {
             let it = tree.iterate({
                 gte: moment.utc('2010-11-30'),
                 lt: moment.utc('2011-01-04'),
                 order: 1,
             });
+            let refs: any[] = [];
+            let dates: any[] = [];
             for await (let [ref, date] of it) {
-                refTable[date.format('YYYY-MM-DD')] = ref;
+                refs.push(ref);
+                dates.push(date.format('YYYY-MM-DD'));
             }
 
             // Check dates in ascending order
-            let dates = Object.keys(refTable);
             let expectedData = _.omit(data, [
                 '2010-10-20',
                 '2011-01-04',
@@ -213,8 +240,8 @@ describe('DateTree #', () => {
             expect(dates).toEqual(Object.keys(expectedData).sort());
 
             // Check refs
-            for (let date of dates) {
-                let value = await refTable[date].then!();
+            for (let [ref, date] of _.zip(refs, dates)) {
+                let value = await ref.then!();
                 expect(value).toBe(data[date]);
             }
         });

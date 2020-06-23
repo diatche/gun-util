@@ -74,6 +74,9 @@ export function iterateRecord<V = any, T = Record<any, V>>(
     ref: IGunChainReference<T>,
     opts: IterateOptions = {},
 ): AsyncGenerator<[V, string]> {
+    if (!ref) {
+        throw new Error('Invalid Gun node reference');
+    }
     if (!!opts.order) {
         return _iterateSortedRecord(ref, opts);
     } else {
@@ -224,12 +227,9 @@ async function * _iterateSortedRecord<V = any, T = Record<any, V>>(
     // Prefer using `once` instead of `then` to allow
     // customizing `wait`.
     let obj: any = await new Promise((resolve, reject) => {
-        let res = ref.once((data, key) => {
+        ref.once((data, key) => {
             resolve(data);
         }, { wait });
-        if (!res) {
-            resolve(undefined);
-        }
     });
     if (typeof obj === 'undefined' || obj === null) {
         return;
