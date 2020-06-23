@@ -19,6 +19,7 @@ Install using yarn with `yarn add gun-util` or npm `npm install gun-util`.
 1. [DateTree](#DateTree)
 2. [Encryption](#Encryption)
 3. [Auth](#Auth)
+3. [Other Methods](#Other-Methods)
 
 ### DateTree
 
@@ -217,3 +218,10 @@ Have a look at the [examples folder](examples/).
 Convenience methods for creating an authenticating a Gun user.
 
 Have a look at the [examples folder](examples/).
+
+### Other Methods
+
+- `waitForData(ref, filter?)`
+  - Returns a promise, which resolves when data arrives at a node reference.
+- `delay(ms, passthrough?)`
+  - Promisified `setTimeout()`.

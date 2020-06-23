@@ -10,3 +10,4 @@ export * from './iterate';
 export * from './support';
 export * from './temp';
 export * from './types';
+export * from './wait';

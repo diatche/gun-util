@@ -4,6 +4,7 @@
 
 ### Features
 
+- `waitForData` allows waiting for data to arrive at a node reference.
 - `Auth` supports login with a SEA pair.
 - `Auth` supports user recall on web and via a delegate on other platforms.
 
