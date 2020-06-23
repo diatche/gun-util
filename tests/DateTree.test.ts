@@ -150,19 +150,15 @@ describe('DateTree #', () => {
 
         it('should not callback after unsubscribe', async () => {
             let compsStack: DateComponents[] = [];
-            let off = tree.changesAbout(
+            let { off } = tree.changesAbout(
                 moment.utc('2020-01-04'),
                 comps => compsStack.push(comps),
             );
-            let dates = [
-                '2020-01-05',
-                '2020-01-06',
-                '2020-02-01',
-            ];
             await tree.get(moment.utc('2020-01-05')).put('a' as never).then!();
             await tree.get(moment.utc('2020-01-06')).put('a' as never).then!();
             off();
-            await tree.get(moment.utc('2020-02-01')).put('a' as never).then!();
+            let ref = tree.get(moment.utc('2020-02-01'));
+            await ref.put('a' as never).then!();
             let receivedDates = compsStack
                 .map(c => DateTree.getDateWithComponents(c).format('YYYY-MM-DD'))
                 .sort();

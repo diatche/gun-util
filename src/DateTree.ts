@@ -104,7 +104,7 @@ export default class DateTree<T = any> {
      * 
      * @returns An unsubscribe function
      */
-    changesAbout(date: DateParsable, callback: (comps: DateComponents) => void): () => void {
+    changesAbout(date: DateParsable, callback: (comps: DateComponents) => void): { off: () => void } {
         let m = parseDate(date);
         let comps = DateTree.getDateComponents(m, this.resolution);
         let units = Object.keys(comps);
@@ -152,7 +152,7 @@ export default class DateTree<T = any> {
             }, { change: true });
             eventsTable[unit] = events;
         });
-        return off;
+        return { off };
     }
 
     /**
