@@ -1,8 +1,7 @@
-import Gun from "gun";
 import { IGunChainReference } from "gun/types/chain";
 import { InvalidCredentials, GunError, AuthError, UserExists, TimeoutError } from "./errors";
 import { IGunCryptoKeyPair } from "gun/types/types";
-import { isGunAuthPairSupported, isPlatformWeb } from "./support";
+import { isGunAuthPairSupported, isPlatformWeb, isGunInstance } from "./support";
 
 const LOGIN_CHECK_DELAY = 500;
 
@@ -30,7 +29,7 @@ export default class Auth {
     static defaultGun: IGunChainReference | undefined;
 
     constructor(gun: IGunChainReference) {
-        if (!(gun instanceof Gun)) {
+        if (!isGunInstance(gun)) {
             throw new Error('Must specify a valid gun instance');
         }
         this.gun = gun;
@@ -49,12 +48,17 @@ export default class Auth {
                 this.defaultGun = gun;
             }
             gun = gun || this.defaultGun;
-            if (!gun) {
+            if (!isGunInstance(gun)) {
                 throw new Error('Must specify a valid gun instance or set a default');
             }
             this._default = new Auth(gun);
         }
         return this._default;
+    }
+
+    static resetDefault() {
+        this.defaultGun = undefined;
+        this._default = undefined;
     }
 
     logout() {

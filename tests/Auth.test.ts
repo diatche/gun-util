@@ -34,8 +34,7 @@ describe('Auth', () => {
         describe('default', () => {
 
             afterEach(() => {
-                (Auth as any)._default = undefined;
-                Auth.defaultGun = undefined;
+                Auth.resetDefault();
             });
 
             it('should return same instance', () => {
