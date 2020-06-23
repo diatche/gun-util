@@ -9,8 +9,8 @@ import {
 } from "./filter";
 
 const WAIT_DEFAULT = 99;
-const ASC_SORT = 1;
-const DES_SORT = -1;
+const ASC_ORDER = 1;
+const DES_ORDER = -1;
 
 export interface IterateOptions<T=string> extends Filter<T> {
     /**
@@ -22,6 +22,8 @@ export interface IterateOptions<T=string> extends Filter<T> {
      */
     order?: number;
     /**
+     * **Temporarily ignored. Do not use.**
+     * 
      * After this time interval (ms), no more
      * data is returned. Defaults to Gun's default
      * of 99 ms.
@@ -44,8 +46,9 @@ export async function iterateAll<T>(it: AsyncIterable<T>): Promise<T[]> {
 
 /**
  * Iterates over the inner keys of a record at a Gun node reference.
- * Behaviour is different if ordering is required, which is specified by
- * setting `opt.order` to a non zero value.
+ * ~~Specify a `opt.wait` value over 1000 on slow networks and CPUs.~~
+ * ~~Behaviour is different if ordering is required, which is specified by
+ * setting `opt.order` to a non zero value.~~
  * 
  * **1. If order is specified:**
  * 
@@ -61,12 +64,12 @@ export async function iterateAll<T>(it: AsyncIterable<T>): Promise<T[]> {
  * 
  * **2. If order is not specified:**
  * 
- * This is faster than without ordering, but it sacrifices guaranteed
+ * ~~This is more efficient than without ordering, but it sacrifices guaranteed
  * ascending order of data by key. This is the case if there is more
- * than one connected peer.
+ * than one connected peer.~~
  * 
- * Filtering using [Gun's lexical wire spec](https://gun.eco/docs/RAD#lex)
- * is supported.
+ * ~~Filtering using [Gun's lexical wire spec](https://gun.eco/docs/RAD#lex)
+ * is supported.~~
  * 
  * @param ref Gun node reference
  **/
@@ -77,11 +80,15 @@ export function iterateRecord<V = any, T = Record<any, V>>(
     if (!ref) {
         throw new Error('Invalid Gun node reference');
     }
-    if (!!opts.order) {
-        return _iterateSortedRecord(ref, opts);
-    } else {
-        return _fastIterateRecord(ref, opts);
-    }
+    // TODO: _fastIterateRecord has unintended side-effects, disable for now
+    // Turn on when iterate using map().once() works
+
+    return _iterateSortedRecord(ref, opts);
+    // if (!!opts.order) {
+    //     return _iterateSortedRecord(ref, opts);
+    // } else {
+    //     return _fastIterateRecord(ref, opts);
+    // }
 }
 
 /**
@@ -90,16 +97,21 @@ export function iterateRecord<V = any, T = Record<any, V>>(
  * Filtering using [Gun's lexical wire spec](https://gun.eco/docs/RAD#lex)
  * is supported.
  * 
- * This method is faster than {@link iterateRecord}, but it sacrifices
+ * This method is more efficient than {@link iterateRecord}, but it sacrifices
  * guaranteed sorting of data by key. This is the case if there is more
  * than one connected peer.
+ * 
+ * Limitations:
+ * 
+ * - On slow network/CPU the wait time needs to be arbitrarily large.
  * 
  * @param ref Gun node reference
  **/
 async function * _fastIterateRecord<V = any, T = Record<any, V>>(
     ref: IGunChainReference<T>,
-    opts: IterateOptions = {},
+    opts: IterateOptions,
 ): AsyncGenerator<[V, string]> {
+    // TODO: has unintended side-effects, disable for now
     let isDone = false;
     let keysSeen = new Set<string>();
     let batch: [V, string][] = [];
@@ -211,12 +223,12 @@ async function * _fastIterateRecord<V = any, T = Record<any, V>>(
  **/
 async function * _iterateSortedRecord<V = any, T = Record<any, V>>(
     ref: IGunChainReference<T>,
-    opts: IterateOptions = {},
+    opts: IterateOptions,
 ): AsyncGenerator<[V, string]> {
     let {
-        order = ASC_SORT,
         wait = WAIT_DEFAULT,
     } = opts;
+    let order = opts.order || ASC_ORDER;
 
     let range = rangeWithFilter(opts);
     if (isValueRangeEmpty(range)) {
@@ -224,13 +236,15 @@ async function * _iterateSortedRecord<V = any, T = Record<any, V>>(
     }
 
     // Get list of keys:
-    // Prefer using `once` instead of `then` to allow
-    // customizing `wait`.
-    let obj: any = await new Promise((resolve, reject) => {
-        ref.once((data, key) => {
-            resolve(data);
-        }, { wait });
-    });
+    // ~~Prefer using `once` instead of `then` to allow customizing `wait`.~~
+    let obj: any = await ref.then!();
+    // The following implementation is somehow buggy.
+    // Produces errors during unit testing in unrelated code.
+    // let obj: any = await new Promise((resolve, reject) => {
+    //     ref.once((data, key) => {
+    //         resolve(data);
+    //     }, { wait });
+    // });
     if (typeof obj === 'undefined' || obj === null) {
         return;
     }

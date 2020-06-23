@@ -6,8 +6,6 @@
 
 - `Auth` supports login with a SEA pair.
 - `Auth` supports user recall on web and via a delegate on other platforms.
-- If no order is specified on `iterateRecord()` (or other methods which use it), then a more
-efficient algorithm is used to iterate over the record. However, order is not defined in this case.
 
 ### Breaking Changes
 

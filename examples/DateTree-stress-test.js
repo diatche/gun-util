@@ -29,10 +29,12 @@ while (date.isBefore(end)) {
 
     console.log(`Fetching ${count} records...`);
     let startTimestamp = moment();
+    let counter = 0;
 
     let it, it0, itN;
     for await (it of tree.iterate({ order: -1 })) {
         if (!it0) it0 = it;
+        counter += 1;
     }
     itN = it;
 
@@ -45,12 +47,17 @@ while (date.isBefore(end)) {
         console.log(`${date}: ${data}`);
     }
 
-    console.log(`Fetched ${count} records in ${time} s at ${rate} records/s`);
+    console.log(`Fetched ${counter} records in ${time} s at ${rate} records/s`);
 
     // Output:
     // Fri Jan 01 2010 00:00:00 GMT+0000: 621158bc-aa17-4e86-833f-e624754b90f4
     // Tue Dec 31 2019 00:00:00 GMT+0000: beedaeeb-4e8b-4cbc-b669-0d3f7468a6f8
-    // Fetched 3652 records in 11 s at 332 records/s
-})().then(() => process.exit(0));
+    // Fetched 3652 records in 14 s at 260.85714285714283 records/s
+})()
+    .then(() => process.exit(0))
+    .catch(e => {
+        console.error(e + '');
+        process.exit(1);
+    });
 
 // Delete your radata folder (Gun's local storage) if you see unexpected logs
