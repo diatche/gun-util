@@ -113,7 +113,7 @@ describe('Auth', () => {
         describe('login', () => {
 
             beforeEach(async () => {
-                let pub = await auth.create(creds);
+                await auth.create(creds);
                 auth.logout();
             });
 
@@ -142,63 +142,44 @@ describe('Auth', () => {
                 auth.logout();
             });
 
-            it('should resolve all listeneres when user created', async done => {
-                let user = '';
-                let pub1 = '';
-                let pub2 = '';
-                const maybeDone = () => {
-                    if (user && pub1 && pub2) {
-                        done();
-                    }
-                };
-                auth.onAuth().then(pub => {
-                    pub1 = pub;
-                    expect(pub1).toEqual(pub);
-                    maybeDone();
-                });
-                auth.onAuth().then(pub => {
-                    pub2 = pub;
-                    expect(pub2).toEqual(pub);
-                    maybeDone();
-                });
-                user = await auth.create(newCreds());
+            it('should resolve all listeneres when user created', async () => {
+                let [pub1, pub2, user] = await Promise.all([
+                    auth.onAuth(),
+                    auth.onAuth(),
+                    auth.create(newCreds())
+                ]);
+                expect(pub1).toEqual(user);
+                expect(pub2).toEqual(user);
             });
 
-            it('should resolve all listeneres when logged in', async done => {
-                let user = '';
-                let pub1 = '';
-                let pub2 = '';
-                const maybeDone = () => {
-                    if (user && pub1 && pub2) {
-                        done();
-                    }
-                };
-                auth.onAuth().then(pub => {
-                    pub1 = pub;
-                    expect(pub1).toEqual(pub);
-                    maybeDone();
-                });
-                auth.onAuth().then(pub => {
-                    pub2 = pub;
-                    expect(pub2).toEqual(pub);
-                    maybeDone();
-                });
-                user = await auth.login(creds);
+            it('should resolve all listeneres when logged in', async () => {
+                let [pub1, pub2, user] = await Promise.all([
+                    auth.onAuth(),
+                    auth.onAuth(),
+                    auth.login(creds)
+                ]);
+                expect(pub1).toEqual(user);
+                expect(pub2).toEqual(user);
             });
 
-            it('should resolve when logged in after a failed attempt', async done => {
-                let user = '';
-                auth.onAuth().then(pub1 => {
-                    expect(pub1).toEqual(user);
-                    done();
-                });
+            it('should resolve when logged in after a failed attempt', async () => {
+                // Subscribe to auth
+                let onAuth = auth.onAuth();
+                let error: any;
                 try {
-                    let user = await auth.login({ ...creds, pass: 'x' });
-                } catch (e) { }
-                user = await auth.login(creds);
+                    await auth.login({ ...creds, pass: 'x' });
+                } catch (e) {
+                    error = e;
+                }
+                expect(error).toBeTruthy();
+                let [pub1, user] = await Promise.all([
+                    onAuth,
+                    auth.login(creds)
+                ]);
+                expect(pub1).toEqual(user);
             });
 
-            it('should resolve when logged in with different user', async done => {
+            it('should resolve when logged in with different user', async () => {
                 let creds2 = newCreds();
                 await auth.create(creds2);
                 auth.logout();
@@ -206,12 +187,11 @@ describe('Auth', () => {
                 let user1 = await auth.login(creds);
                 auth.logout();
 
-                let user2 = '';
-                auth.onAuth().then(pub2 => {
-                    expect(pub2).toEqual(user2);
-                    done();
-                });
-                user2 = await auth.login(creds2);
+                let [pub2, user2] = await Promise.all([
+                    auth.onAuth(),
+                    auth.login(creds2)
+                ]);
+                expect(pub2).toEqual(user2);
                 expect(user2).not.toEqual(user1);
             });
 
