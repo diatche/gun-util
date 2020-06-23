@@ -288,5 +288,16 @@ describe('Auth', () => {
                 expect(againPub).toEqual(newPub);
             });
         });
+
+        describe('user', () => {
+
+            it('should return a writable reference', async () => {
+                await auth.create(creds);
+                let user = auth.user()!;
+                await user.get('label').put('test' as never).then!();
+                let label = await user.get('label').then!();
+                expect(label).toBe('test');
+            });
+        });
     });
 });

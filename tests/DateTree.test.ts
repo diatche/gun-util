@@ -210,7 +210,7 @@ describe('DateTree #', () => {
                 '2010-10-20',
                 '2011-01-04',
             ]);
-            expect(_.sortBy(dates)).toEqual(Object.keys(expectedData).sort());
+            expect([...dates].sort()).toEqual(Object.keys(expectedData).sort());
 
             // Check refs
             for (let [ref, date] of _.zip(refs, dates)) {
