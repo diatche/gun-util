@@ -10,13 +10,22 @@ export interface UserCredentials {
     pass: string
 }
 
+export interface AuthRecallOptions {
+    /** Timeout `ms` interval. */
+    timeout?: number;
+}
+
 export interface AuthDelegate {
 
-    /** The receiver should securely store the pair. */
+    /** The delegate should securely store the pair. */
     storePair?: (pair: IGunCryptoKeyPair, auth: Auth) => Promise<void> | void;
 
-    /** The receiver should recover the store pair if available. */
-    recallPair?: (auth: Auth) => Promise<IGunCryptoKeyPair | undefined> | IGunCryptoKeyPair | undefined;
+    /**
+     * The delegate should recover the store pair if available.
+     * If a timeout option is specified, it's up to the delegate to
+     * enforce this.
+     **/
+    recallPair?: (auth: Auth, opts: AuthRecallOptions) => Promise<IGunCryptoKeyPair | undefined> | IGunCryptoKeyPair | undefined;
 }
 
 /**
@@ -120,19 +129,18 @@ export default class Auth {
     /**
      * Login a previously saved user.
      */
-    async recall(): Promise<string | undefined> {
+    async recall(opts: AuthRecallOptions = {}): Promise<string | undefined> {
         return this._authBlock(async () => {
             if (this.delegate?.recallPair) {
-                let pair = await this.delegate?.recallPair(this);
+                let pair = await this.delegate!.recallPair(this, opts);
                 if (pair) {
                     // Auth with pair
                     return await this._login(pair);
                 }
             } else if (isPlatformWeb()) {
-                return await this._recallSessionStorage();
-            } else {
-                return undefined;
+                return await this._recallSessionStorage(opts);
             }
+            return undefined;
         });
     }
 
@@ -254,13 +262,12 @@ export default class Auth {
         ]);
     }
 
-    private async _recallSessionStorage(
-        { timeout }: { timeout?: number } = {}
-    ): Promise<string | undefined> {
+    private async _recallSessionStorage(opts: AuthRecallOptions): Promise<string | undefined> {
         let recallAction = new Promise<string | undefined>((resolve, reject) => {
             let resolveOnce: (typeof resolve) | undefined = resolve;
             let rejectOnce: (typeof reject) | undefined = reject;
 
+            let { timeout } = opts;
             let timer: any;
             if (timeout) {
                 timer = setTimeout(() => {
@@ -274,10 +281,10 @@ export default class Auth {
             }
 
             // Begin login
-            let opts = {
+            let gunOpts = {
                 sessionStorage: true,
             };
-            this.gun.user().recall(opts, ack => {
+            this.gun.user().recall(gunOpts, ack => {
                 if (!resolveOnce || !rejectOnce) return;
 
                 if ('err' in ack) {
