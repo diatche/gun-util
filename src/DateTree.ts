@@ -2,7 +2,6 @@ import { IGunChainReference } from "gun/types/chain";
 import _ from 'lodash';
 import moment, { Moment } from 'moment';
 import { IterateOptions, iterateRefs } from "./iterate";
-import { AckCallback } from "gun/types/types";
 import { rangeWithFilter, filterWithRange } from "./filter";
 
 export type DateUnit = 'year' | 'month' | 'day' | 'hour' | 'minute' | 'second' | 'millisecond';
@@ -18,9 +17,6 @@ export type DateParsable = Moment | Date | string | number;
 const ZERO_DATE = moment.utc().startOf('year').set('year', 1);
 
 type DateComponentsUnsafe = { [res: string]: number };
-type ImmutableDateComponentsUnsafe = {
-    readonly [res: string]: number
-};
 
 /**
  * All date components are natural.
