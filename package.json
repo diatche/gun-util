@@ -3,8 +3,6 @@
   "version": "0.0.5",
   "description": "Convenience and utility methods for GunDB",
   "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "browser": "dist/index.umd.js",
   "files": [
     "dist"
   ],
