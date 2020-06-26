@@ -2,6 +2,10 @@
 
 ## develop
 
+Changes on `develop` will be listed here.
+
+## 0.0.6
+
 ### Features
 
 - `waitForData` allows waiting for data to arrive at a node reference.
