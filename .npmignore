@@ -103,6 +103,7 @@ typings/
 .tern-port
 
 # Project
+temp/
 src/
 tests/
 tsconfig.json
@@ -112,3 +113,4 @@ package-lock.json
 
 # Gun
 radata/
+radata*

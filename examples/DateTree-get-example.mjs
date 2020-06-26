@@ -2,7 +2,7 @@ import Gun from 'gun';
 import { DateTree } from '../dist/index.mjs';
 
 let gun = Gun();
-let treeRoot = gun.get('tree');
+let treeRoot = gun.get('tree-get');
 let tree = new DateTree(treeRoot, 'day');
 
 let eventRef = treeRoot.get('2020').get('08').get('23');
@@ -20,6 +20,6 @@ tree.get('2020-08-23').put({ event: 'of a lifetime' });
     console.log('event: ' + event);
     // Output:
     // event: of a lifetime
-})();
+})().then(() => process.exit(0));
 
 // Delete your radata folder (Gun's local storage) if you see unexpected logs

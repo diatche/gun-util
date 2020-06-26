@@ -1,10 +1,13 @@
+export * from './Auth';
+export { default as Auth } from './Auth';
+export * from './const';
 export * from './DateTree';
 export { default as DateTree } from './DateTree';
 export * from './encryption';
 export * from './errors';
-export * from './const';
+export * from './filter';
 export * from './iterate';
+export * from './support';
 export * from './temp';
 export * from './types';
-export * from './user';
-export { default as GunUser } from './user';
+export * from './wait';

@@ -4,7 +4,7 @@ import { IGunChainReference } from 'gun/types/chain';
 import _ from 'lodash';
 import Gun from 'gun';
 import { v4 as uuidv4 } from 'uuid';
-import { GunUser } from '../src';
+import Auth from '../src/Auth';
 
 interface State {
     [key: string]: UserState;
@@ -15,14 +15,23 @@ interface UserState {
 }
 
 let gun: IGunChainReference<State>;
+let auth: Auth;
 let userRef: IGunChainReference<UserState>;
 let runId: string;
+
+const newCreds = () => {
+    return {
+        alias: uuidv4(),
+        pass: uuidv4()
+    };
+};
 
 describe('encryption', () => {
     jest.setTimeout(20000);
 
     beforeAll(() => {
         gun = Gun<State>(TEST_GUN_OPTIONS);
+        auth = new Auth(gun);
     });
 
     beforeEach(async () => {
@@ -31,7 +40,7 @@ describe('encryption', () => {
     });
 
     afterEach(() => {
-        GunUser.logout(gun);
+        auth.logout();
     });
 
     afterAll(() => {
@@ -41,22 +50,22 @@ describe('encryption', () => {
     describe('encrypt/decrypt', () => {
 
         it('should encrypt/decrypt a value', async () => {
-            await GunUser.create({ alias: runId, pass: 'bar' }, gun);
-            let enc = await encrypt('a@a.com', { pair: GunUser.pair(gun) });
-            expect(enc).toMatch(/SEA\{.*/g);
-            let dec = await decrypt(enc, { pair: GunUser.pair(gun) });
+            await auth.create(newCreds());
+            let enc = await encrypt('a@a.com', { pair: auth.pair()! });
+            expect(enc).toMatch(/^SEA\{.*\}$/g);
+            let dec = await decrypt(enc, { pair: auth.pair()! });
             expect(dec).toEqual('a@a.com');
         });
 
         it('should encrypt/decrypt an object', async () => {
-            let pub = await GunUser.create({ alias: runId, pass: 'bar' }, gun);
+            let pub = await auth.create(newCreds());
             userRef = gun.user(pub) as any;
             let orig = Gun.node.ify({ a: 'a1', b: 'b1' });
-            let enc = await encrypt(orig, { pair: GunUser.pair(gun) });
+            let enc = await encrypt(orig, { pair: auth.pair()! });
             expect(Object.keys(enc).length).toBe(3);
-            expect(enc.a).toMatch(/SEA\{.*/g);
-            expect(enc.b).toMatch(/SEA\{.*/g);
-            expect(await decrypt(enc, { pair: GunUser.pair(gun) })).toMatchObject(orig);
+            expect(enc.a).toMatch(/^SEA\{.*\}$/g);
+            expect(enc.b).toMatch(/^SEA\{.*\}$/g);
+            expect(await decrypt(enc, { pair: auth.pair()! })).toMatchObject(orig);
         });
 
         it('should encrypt/decrypt a value for another user', async () => {
@@ -64,8 +73,8 @@ describe('encryption', () => {
             let creds = ['1', '2', '3'].map(x => ({ alias: runId + x, pass: 'bar' }));
             let pubs: string[] = [];
             for (let cred of creds) {
-                let pub = await GunUser.create(cred, gun)
-                GunUser.logout(gun);
+                let pub = await auth.create(cred)
+                auth.logout();
                 pubs.push(pub);
             }
             let epubs: string[] = await Promise.all(
@@ -73,29 +82,29 @@ describe('encryption', () => {
             ) as any;
 
             // [0] encrypts email for [1]
-            await GunUser.login(creds[0], gun);
+            await auth.login(creds[0]);
             let encFor1 = await encrypt('a@a.com', {
-                pair: GunUser.pair(gun),
+                pair: auth.pair()!,
                 recipient: { epub: epubs[1] }
             });
-            expect(encFor1).toMatch(/SEA\{.*/g);
-            GunUser.logout(gun);
+            expect(encFor1).toMatch(/^SEA\{.*\}$/g);
+            auth.logout();
 
             // [1] decrypts
-            await GunUser.login(creds[1], gun);
+            await auth.login(creds[1]);
             let dec1 = await decrypt(encFor1, {
-                pair: GunUser.pair(gun),
+                pair: auth.pair()!,
                 sender: { epub: epubs[0] }
             });
             expect(dec1).toBe('a@a.com');
-            GunUser.logout(gun);
+            auth.logout();
 
             // [2] fails to decrypt
-            await GunUser.login(creds[2], gun);
+            await auth.login(creds[2]);
             let error: any;
             try {
                 await decrypt(encFor1, {
-                    pair: GunUser.pair(gun),
+                    pair: auth.pair()!,
                     sender: { epub: epubs[0] }
                 });
             } catch (e) {

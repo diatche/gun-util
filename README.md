@@ -2,13 +2,15 @@
 
 Convenience and utility methods for [GunDB](https://github.com/amark/gun).
 
-*Note that this package is in early stages of development and there may be breaking changes within semantically compatible versions.*
+![Node.js CI](https://github.com/diatche/gun-util/workflows/Node.js%20CI/badge.svg)
+
+*Note that this package is in early stages of development and there may be breaking changes within semantically compatible versions. See [change log](CHANGELOG.md).*
 
 ## Installation
 
 Install using yarn with `yarn add gun-util` or npm `npm install gun-util`.
 
-*If you are ES modules, you may need to import from `'date-util/dist/index.mjs'` for imports to work.*
+*If you are using ES modules, you may need to import from `'date-util/dist/index.mjs'` for imports to work.*
 
 ## Documentation
 
@@ -16,7 +18,8 @@ Install using yarn with `yarn add gun-util` or npm `npm install gun-util`.
 
 1. [DateTree](#DateTree)
 2. [Encryption](#Encryption)
-3. [GunUser](#GunUser)
+3. [Auth](#Auth)
+3. [Other Methods](#Other-Methods)
 
 ### DateTree
 
@@ -90,7 +93,7 @@ tree.get('2020-01-16 05:45').put({ event: 'earlybird' });
     // A naive implementation would have close to a billion
     // nodes and would take forever to iterate.
     // This takes only a second:
-    for await (let [ref, date] of tree.iterate()) {
+    for await (let [ref, date] of tree.iterate({ order: 1 })) {
         let event = await ref.get('event').then();
         console.log(`${date} event: ${event}`);
     }
@@ -105,11 +108,9 @@ Filtering by date range and reverse iteration is possible using options:
 
 ```javascript
 tree.iterate({
-    start: '2020-01-01',
-    end: '2020-02-01',
-    startInclusive: true,
-    endInclusive: false,
-    reverse: true
+    gte: '2020-01-01',
+    lt: '2020-02-01',
+    order: -1
 })
 ```
 
@@ -169,7 +170,7 @@ we can call `unsub()` and resubscribe to a later date.
 
 **Other examples**
 
-Have a look at the examples folder.
+Have a look at the [examples folder](examples/).
 
 ### Encryption
 
@@ -208,7 +209,19 @@ let dec = await decrypt(enc, {
 assert(dec.whereami === 'shire');
 ```
 
-### GunUser
+**Other examples**
+
+Have a look at the [examples folder](examples/).
+
+### Auth
 
 Convenience methods for creating an authenticating a Gun user.
 
+Have a look at the [examples folder](examples/).
+
+### Other Methods
+
+- `waitForData(ref, filter?)`
+  - Returns a promise, which resolves when data arrives at a node reference.
+- `delay(ms, passthrough?)`
+  - Promisified `setTimeout()`.
