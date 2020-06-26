@@ -17,11 +17,18 @@ export function getConnectedPeers<T>(gun: IGunChainReference<T>): IGunPeer[] {
 
 
 /*
-
+-----
 anyone got a better way to remove peers than gun.back('opt.peers')[peerurl].wire.close(); gun.opt({peers: []}); gun.opt({peers: newpeers})
 
-<@!721344914297978892> I think you can pass the peer to `gun.on('bye', {peer})`, ... I think?
+I think you can pass the peer to `gun.on('bye', {peer})`, ... I think?
 
-@marknadal thanks mark for your reply, unfortunately  gun still reconnects to the peer after gun.on('bye', {peer})
+thanks mark for your reply, unfortunately  gun still reconnects to the peer after gun.on('bye', {peer})
+------
 
+------
+How can I programmatically check if the current gun peer connection is "connected"?
+Where does Gun keep its reference to the active WebSocket object?
+
+@Joncom gun._.opt.peers[‘peerurl’].wire.connectionStatus
+------
 */
