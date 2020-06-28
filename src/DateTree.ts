@@ -2,8 +2,7 @@ import { IGunChainReference } from "gun/types/chain";
 import _ from 'lodash';
 import moment, { Moment } from 'moment';
 import { IterateOptions, iterateRefs } from "./iterate";
-import { AckCallback } from "gun/types/types";
-import { rangeWithFilter, filterWithRange } from "./filter";
+import { rangeWithFilter, filterWithRange, Filter } from "./filter";
 
 export type DateUnit = 'year' | 'month' | 'day' | 'hour' | 'minute' | 'second' | 'millisecond';
 
@@ -72,6 +71,51 @@ export default class DateTree<T = any> {
         return floor;
     }
 
+    map(opts: Filter<DateParsable>, on: (data: T, date: Moment) => void) {
+        let range = rangeWithFilter(opts);
+        let {
+            start,
+            end,
+            startClosed,
+            endClosed,
+        } = range;
+        let startComps = (start && DateTree.getDateComponents(start, this.resolution) || {}) as Partial<DateComponentsUnsafe>;
+        let endComps = (end && DateTree.getDateComponents(end, this.resolution) || {}) as Partial<DateComponentsUnsafe>;
+        let comps: DateComponentsUnsafe = {};
+        let units = this._allUnits();
+        let commonUnit = DateTree.largestCommonUnit(startComps, endComps);
+        let commonComps = commonUnit
+            ? DateTree.downsampleDateComponents(startComps, commonUnit)
+            : {};
+        let mapTable: any = {};
+        let eventTable: any = {};
+
+        const onEvent = (data: any, comps: DateComponents, unit: DateUnit | undefined) => {
+            let ref = this._getRef(comps);
+            let compKey = DateTree.dateComponentsToString(comps, unit);
+            let innerUnit = DateTree.getSmallerUnit(unit || 'year');
+            let date: Moment | undefined;
+            if (!innerUnit) {
+                // Listening to data
+                date
+            }
+            let map = ref.map();
+            mapTable[compKey] = map;
+            eventTable[compKey] = map.on((data: any, key: string) => {
+                let innerComps = { ...comps, [innerUnit] }
+                 if (innerUnit) {
+                    // Map deeper
+                 } else {
+                    // Got data
+                    let date = 
+                    on(data, )
+                 }
+            });
+        };
+
+        onEvent(undefined, commonComps, commonUnit);
+    }
+
     /**
      * Listens to changes about the specified date.
      * 
@@ -108,7 +152,7 @@ export default class DateTree<T = any> {
         let m = parseDate(date);
         let comps = DateTree.getDateComponents(m, this.resolution);
         let units = Object.keys(comps);
-        let refs = this._getRefChain(m);
+        let refs = this._getRefChain(comps);
         let refTable = _.zipObject(units, refs);
         let eventsTable: { [unit: string]: IGunChainReference } = {};
 
@@ -188,12 +232,16 @@ export default class DateTree<T = any> {
      * @returns Gun node reference
      */
     get(date: DateParsable): IGunChainReference<T> {
-        let chain = this._getRefChain(parseDate(date));
+        let comps = DateTree.getDateComponents(parseDate(date), this.resolution);
+        let chain = this._getRefChain(comps);
         return chain[chain.length - 1] as any;
     }
 
-    private _getRefChain(date: Moment): IGunChainReference[] {
-        let comps = DateTree.getDateComponents(date, this.resolution);
+    /**
+     * Assumes the date components are clean (with no other properties).
+     * @param comps 
+     */
+    private _getRefChain(comps: DateComponents): IGunChainReference[] {
         let ref = this.root;
         let refs = [ref];
         _.forIn(comps, (val, unit) => {
@@ -202,6 +250,15 @@ export default class DateTree<T = any> {
             refs.push(ref);
         });
         return refs;
+    }
+
+    /**
+     * Assumes the date components are clean (with no other properties).
+     * @param comps 
+     */
+    private _getRef(comps: DateComponents): IGunChainReference {
+        let chain = this._getRefChain(comps);
+        return chain[chain.length - 1];
     }
 
     /**
@@ -435,6 +492,24 @@ export default class DateTree<T = any> {
         return graphDateValue(val, unit);
     }
 
+    /**
+     * Returns the largest common unit between two date components.
+     * If none is found, returns undefined
+     * @param comp1 
+     * @param comp2 
+     */
+    static largestCommonUnit(comp1: DateComponents, comp2: DateComponents): DateUnit | undefined {
+        let commonUnit: DateUnit | undefined;
+        for (let unit of ALL_DATE_UNITS) {
+            if (comp1[unit] === comp2[unit]) {
+                commonUnit = unit;
+            } else {
+                break;
+            }
+        }
+        return commonUnit;
+    }
+
     static encodeDateComponent(value: number | undefined, unit: DateUnit): string | undefined {
         if (typeof value === 'undefined') {
             return undefined;
@@ -508,6 +583,42 @@ export default class DateTree<T = any> {
         let i = ALL_DATE_UNITS.indexOf(unit);
         if (i === ALL_DATE_UNITS.length - 1) return undefined;
         return ALL_DATE_UNITS[i + 1];
+    }
+
+    static dateComponentsToString(comp: DateComponents, resolution?: DateUnit): string {
+        let str = '';
+        for (let unit of ALL_DATE_UNITS) {
+            if (!(resolution || unit in comp)) {
+                break;
+            }
+            let val = this.encodeDateComponent(comp[unit], unit);
+            switch (unit) {
+                case 'year':
+                    break;
+                case 'month':
+                case 'day':
+                    str += '-';
+                    break;
+                case 'hour':
+                    str += 'T';
+                    break;
+                case 'minute':
+                case 'second':
+                    str += ':';
+                    break;
+                case 'millisecond':
+                    str += '.';
+                    break;
+            }
+            str += val;
+            if (unit === 'millisecond') {
+                str += 'Z';
+            }
+            if (unit === resolution) {
+                break;
+            }
+        }
+        return str;
     }
 
     /**
