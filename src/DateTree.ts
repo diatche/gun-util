@@ -2,7 +2,14 @@ import { IGunChainReference } from "gun/types/chain";
 import _ from 'lodash';
 import moment, { Moment } from 'moment';
 import { IterateOptions, iterateRefs } from "./iterate";
-import { rangeWithFilter, filterWithRange, Filter, ValueRange, filterKey, mapValueRange } from "./filter";
+import {
+    rangeWithFilter,
+    filterWithRange,
+    Filter,
+    ValueRange,
+    filterKey,
+    mapValueRange,
+} from "./filter";
 
 export type DateUnit = 'year' | 'month' | 'day' | 'hour' | 'minute' | 'second' | 'millisecond';
 
@@ -26,12 +33,7 @@ export interface Subscription {
     off: () => void;
 }
 
-interface BaseEventOptions {
-    /** If true, subscribe to updates only. */
-    // updates?: boolean;
-}
-
-export type DateEventOptions = Filter<DateParsable> & BaseEventOptions;
+export type DateEventOptions = Filter<DateParsable>;
 
 export type DateEventCallback<T> = (
     data: T,
@@ -91,10 +93,17 @@ export default class DateTree<T = any> {
     }
 
     /**
-     * Subscribes to data and canges on nodes in a date range.
+     * Subscribes to data in a date range.
+     * It is recommended to limit the date range
+     * as much as possible to avoid creating too
+     * many internal data subscriptions, which slows
+     * down program execution.
+     * 
      * The data is not ordered.
+     * 
      * If no date range is given, subscribes to changes
-     * on any date (not recommended).
+     * on any date (not recommended on larger trees).
+     * 
      * @param cb 
      * @param opts 
      * @returns A {@link Subscription} object.
@@ -171,9 +180,11 @@ export default class DateTree<T = any> {
                 // Filter inner keys
                 let lexRange: any = {};
                 if (typeof innerStart !== 'undefined') {
+                    // Start filter is inclusive
                     lexRange['>'] = innerStart;
                 }
                 if (typeof innerEnd !== 'undefined') {
+                    // End filter is inclusive
                     lexRange['<'] = innerEnd;
                 }
                 innerRef = innerRef.get({ '.': lexRange });
@@ -186,6 +197,10 @@ export default class DateTree<T = any> {
                 if (didUnsub) {
                     return;
                 }
+                // Subscription method inside the callback seem to be
+                // more reliable.
+                subTable[compKey] = innerSub;
+
                 let value = DateTree.decodeDateComponent(key);
                 let innerComps = { ...comps, [innerUnit!]: value };
                 if (innerUnit === this.resolution) {
@@ -209,7 +224,7 @@ export default class DateTree<T = any> {
     }
 
     private _onAny(cb: DateEventCallback<T>): Subscription {
-        // TODO: opts.updates = true not working as intended
+        // TODO: opts.updates = true not working as expected
         let units = this._allUnits();
         let ref = this.root.map();
 
@@ -284,6 +299,11 @@ export default class DateTree<T = any> {
                     // Already unsubscribed
                     return;
                 }
+
+                // Subscription method inside the callback seem to be
+                // more reliable.
+                subTable[unit] = sub;
+
                 // Get data
                 _.forIn(changes, (val, key) => {
                     if (key === '_') {

@@ -195,20 +195,22 @@ describe('DateTree #', () => {
         describe('with filter', () => {
 
             it('should callback with all the data with super set range', done => {
-                tree.get('2020-01-03').put('foo');
-                tree.get('2020-01-06').put('bar');
-                tree.get('2020-01-10').put('gaz');
+                treeRoot = gun.get(runId);
+                tree = new DateTree<string>(treeRoot, 'millisecond');
 
-                let dateFormat = 'YYYY-MM-DD';
+                let d1 = moment('2020-01-03T10:23:56.344Z').toISOString();
+                tree.get(d1).put('foo');
+                let d2 = moment('2020-01-06T15:34:17.762Z').toISOString();
+                tree.get(d2).put('bar');
+
                 let cbTable: any = {};
                 tree.on((data, date) => {
-                    let key = date.utc().format(dateFormat);
+                    let key = date.utc().toISOString();
                     cbTable[key] = data;
-                    if (Object.keys(cbTable).length === 3) {
+                    if (Object.keys(cbTable).length === 2) {
                         expect(cbTable).toMatchObject({
-                            '2020-01-03': 'foo',
-                            '2020-01-06': 'bar',
-                            '2020-01-10': 'gaz',
+                            [d1]: 'foo',
+                            [d2]: 'bar',
                         });
                         done();
                     }
@@ -246,7 +248,7 @@ describe('DateTree #', () => {
                 tree.get('2020-01-10').put('gaz');
             }, 40000);
 
-            it('should callback with filtered data', done => {
+            it('should callback with data in open set', done => {
                 tree.get('2020-01-03').put('foo');
                 tree.get('2020-02-04').put('bar1');
                 tree.get('2020-02-09').put('bar2');
@@ -265,6 +267,27 @@ describe('DateTree #', () => {
                         done();
                     }
                 }, { gt: '2020-01-03', lt: '2020-03-10' });
+            });
+
+            it('should callback with data in closed set', done => {
+                tree.get('2020-01-03').put('foo');
+                tree.get('2020-02-04').put('bar1');
+                tree.get('2020-02-09').put('bar2');
+                tree.get('2020-03-10').put('gaz');
+
+                let dateFormat = 'YYYY-MM-DD';
+                let cbTable: any = {};
+                tree.on((data, date) => {
+                    let key = date.utc().format(dateFormat);
+                    cbTable[key] = data;
+                    if (Object.keys(cbTable).length === 2) {
+                        expect(cbTable).toMatchObject({
+                            '2020-02-04': 'bar1',
+                            '2020-02-09': 'bar2',
+                        });
+                        done();
+                    }
+                }, { gte: '2020-02-04', lte: '2020-02-09' });
             });
 
             it.skip('should callback with updates', async (done) => {

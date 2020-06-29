@@ -4,6 +4,16 @@
 
 Changes on `develop` will be listed here.
 
+### Features
+
+- Added `DateTree#.on()` method, which allows subscribing to all or a subset of
+the tree's data.
+- Filter methods support any value which has a `valueOf()` method.
+- `DateTree#.getDate()` can now be used with a reference from a callback.
+- Added `DateTree#.largestCommonUnit()`.
+- Added `DateTree#.getDateComponentKeyRange()`.
+- Added `DateTree#.dateComponentsToString()`.
+
 ## 0.0.6
 
 ### Features
