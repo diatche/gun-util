@@ -5,7 +5,7 @@ import {
     filterWithRange,
     mapValueRange,
     filteredIndexRange,
-    filterKey,
+    isInRange,
     isValueRangeEmpty
 } from '../src/filter';
 import moment from 'moment';
@@ -106,7 +106,7 @@ describe('isValueRangeEmpty', () => {
     });
 });
 
-describe('filterKey', () => {
+describe('isInRange', () => {
 
     it('should filter correctly with open subset range', () => {
         let range = {
@@ -115,11 +115,11 @@ describe('filterKey', () => {
             startClosed: false,
             endClosed: false,
         };
-        expect(filterKey('a', range)).toBeFalsy();
-        expect(filterKey('bar', range)).toBeFalsy();
-        expect(filterKey('foo', range)).toBeTruthy();
-        expect(filterKey('gaz', range)).toBeFalsy();
-        expect(filterKey('z', range)).toBeFalsy();
+        expect(isInRange('a', range)).toBeFalsy();
+        expect(isInRange('bar', range)).toBeFalsy();
+        expect(isInRange('foo', range)).toBeTruthy();
+        expect(isInRange('gaz', range)).toBeFalsy();
+        expect(isInRange('z', range)).toBeFalsy();
     });
 
     it('should filter correctly with closed subset range', () => {
@@ -129,11 +129,11 @@ describe('filterKey', () => {
             startClosed: true,
             endClosed: true,
         };
-        expect(filterKey('a', range)).toBeFalsy();
-        expect(filterKey('bar', range)).toBeTruthy();
-        expect(filterKey('foo', range)).toBeTruthy();
-        expect(filterKey('gaz', range)).toBeTruthy();
-        expect(filterKey('z', range)).toBeFalsy();
+        expect(isInRange('a', range)).toBeFalsy();
+        expect(isInRange('bar', range)).toBeTruthy();
+        expect(isInRange('foo', range)).toBeTruthy();
+        expect(isInRange('gaz', range)).toBeTruthy();
+        expect(isInRange('z', range)).toBeFalsy();
     });
 
     it('should filter correctly with positive infinity range', () => {
@@ -143,8 +143,8 @@ describe('filterKey', () => {
             startClosed: true,
             endClosed: true,
         };
-        expect(filterKey('a', range)).toBeFalsy();
-        expect(filterKey('z', range)).toBeTruthy();
+        expect(isInRange('a', range)).toBeFalsy();
+        expect(isInRange('z', range)).toBeTruthy();
     });
 
     it('should filter correctly with negative infinity range', () => {
@@ -154,8 +154,8 @@ describe('filterKey', () => {
             startClosed: true,
             endClosed: true,
         };
-        expect(filterKey('a', range)).toBeTruthy();
-        expect(filterKey('z', range)).toBeFalsy();
+        expect(isInRange('a', range)).toBeTruthy();
+        expect(isInRange('z', range)).toBeFalsy();
     });
 
     it('should filter moments', () => {
@@ -165,10 +165,10 @@ describe('filterKey', () => {
             startClosed: false,
             endClosed: false,
         };
-        expect(filterKey(moment.utc('2020-01-04'), range)).toBeFalsy();
-        expect(filterKey(moment.utc('2020-01-05'), range)).toBeTruthy();
-        expect(filterKey(moment.utc('2020-03-05'), range)).toBeTruthy();
-        expect(filterKey(moment.utc('2020-03-06'), range)).toBeFalsy();
+        expect(isInRange(moment.utc('2020-01-04'), range)).toBeFalsy();
+        expect(isInRange(moment.utc('2020-01-05'), range)).toBeTruthy();
+        expect(isInRange(moment.utc('2020-03-05'), range)).toBeTruthy();
+        expect(isInRange(moment.utc('2020-03-06'), range)).toBeFalsy();
     });
 });
 

@@ -18,7 +18,7 @@ export interface ValueRange<T> {
     endClosed: boolean;
 }
 
-export function filterKey<T extends PrimitiveCastable>(key: T, range: ValueRange<T>): boolean {
+export function isInRange<T extends PrimitiveCastable>(key: T, range: ValueRange<T>): boolean {
     if (isValueRangeEmpty(range)) {
         return false;
     }
@@ -64,7 +64,7 @@ export function filteredIndexRange<T extends PrimitiveCastable>(keys: T[], range
         return [0, 0];
     }
     if (len === 1) {
-        if (filterKey(keys[0], range)) {
+        if (isInRange(keys[0], range)) {
             return [0, 1]
         } else {
             return [0, 0];

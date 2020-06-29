@@ -7,7 +7,7 @@ import {
     filterWithRange,
     Filter,
     ValueRange,
-    filterKey,
+    isInRange,
     mapValueRange,
 } from "./filter";
 
@@ -207,7 +207,7 @@ export default class DateTree<T = any> {
                     // Got data
                     let date = DateTree.getDateWithComponents(innerComps);
                     // Filter boundaries
-                    if (filterKey(date, range)) {
+                    if (isInRange(date, range)) {
                         cb(data, date, at, commonSub);
                     }
                 } else {

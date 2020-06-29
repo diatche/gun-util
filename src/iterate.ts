@@ -4,7 +4,7 @@ import {
     Filter,
     rangeWithFilter,
     isValueRangeEmpty,
-    filterKey,
+    isInRange,
     filteredIndexRange,
 } from "./filter";
 
@@ -158,7 +158,7 @@ async function * _fastIterateRecord<V = any, T = Record<any, V>>(
         }
         keysSeen.add(key);
         lastDataDate = new Date();
-        if (filterKey(key, range)) {
+        if (isInRange(key, range)) {
             batch.push([data as V, key]);
             _resolve();
         }

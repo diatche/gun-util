@@ -14,6 +14,10 @@ the tree's data.
 - Added `DateTree#.getDateComponentKeyRange()`.
 - Added `DateTree#.dateComponentsToString()`.
 
+### Breaking Changes
+
+- Renamed `filterKey()` to `isInRange()`.
+
 ## 0.0.6
 
 ### Features
