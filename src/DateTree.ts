@@ -26,7 +26,14 @@ export interface Subscription {
     off: () => void;
 }
 
-export type DateMapCallback<T> = (
+interface BaseEventOptions {
+    /** If true, subscribe to updates only. */
+    // updates?: boolean;
+}
+
+export type DateEventOptions = Filter<DateParsable> & BaseEventOptions;
+
+export type DateEventCallback<T> = (
     data: T,
     date: Moment,
     at: any,
@@ -84,14 +91,16 @@ export default class DateTree<T = any> {
     }
 
     /**
-     * Subscribes to changes on nodes in a date range.
+     * Subscribes to data and canges on nodes in a date range.
+     * The data is not ordered.
      * If no date range is given, subscribes to changes
      * on any date (not recommended).
      * @param cb 
      * @param opts 
      * @returns A {@link Subscription} object.
      */
-    on(cb: DateMapCallback<T>, opts: Filter<DateParsable> = {}): Subscription {
+    on(cb: DateEventCallback<T>, opts: DateEventOptions = {}): Subscription {
+        // TODO: add updates support
         let range = mapValueRange(
             rangeWithFilter(opts),
             parseDate
@@ -199,7 +208,8 @@ export default class DateTree<T = any> {
         return commonSub;
     }
 
-    private _onAny(cb: DateMapCallback<T>): Subscription {
+    private _onAny(cb: DateEventCallback<T>): Subscription {
+        // TODO: opts.updates = true not working as intended
         let units = this._allUnits();
         let ref = this.root.map();
 
