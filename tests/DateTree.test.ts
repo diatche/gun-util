@@ -140,6 +140,30 @@ describe('DateTree #', () => {
                 });
             });
         });
+
+        describe('with filter', () => {
+
+            it('should callback with all the data with super set range', done => {
+                tree.get('2020-01-03').put('foo');
+                tree.get('2020-01-06').put('bar');
+                tree.get('2020-01-10').put('gaz');
+
+                let dateFormat = 'YYYY-MM-DD';
+                let cbTable: any = {};
+                tree.on((data, date) => {
+                    let key = date.utc().format(dateFormat);
+                    cbTable[key] = data;
+                    if (Object.keys(cbTable).length === 3) {
+                        expect(cbTable).toMatchObject({
+                            '2020-01-03': 'foo',
+                            '2020-01-06': 'bar',
+                            '2020-01-10': 'gaz',
+                        });
+                        done();
+                    }
+                }, { gte: '2020-01-03' });
+            });
+        });
     });
 
     describe('changesAbout', () => {
