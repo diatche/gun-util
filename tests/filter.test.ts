@@ -8,6 +8,7 @@ import {
     filterKey,
     isValueRangeEmpty
 } from '../src/filter';
+import moment from 'moment';
 
 
 describe('isValueRangeEmpty', () => {
@@ -147,7 +148,6 @@ describe('filterKey', () => {
     });
 
     it('should filter correctly with negative infinity range', () => {
-        let keys = ['bar', 'foo', 'gaz'];
         let range = {
             start: undefined,
             end: 'foo',
@@ -156,6 +156,19 @@ describe('filterKey', () => {
         };
         expect(filterKey('a', range)).toBeTruthy();
         expect(filterKey('z', range)).toBeFalsy();
+    });
+
+    it('should filter moments', () => {
+        let range = {
+            start: moment.utc('2020-01-04'),
+            end: moment.utc('2020-03-06'),
+            startClosed: false,
+            endClosed: false,
+        };
+        expect(filterKey(moment.utc('2020-01-04'), range)).toBeFalsy();
+        expect(filterKey(moment.utc('2020-01-05'), range)).toBeTruthy();
+        expect(filterKey(moment.utc('2020-03-05'), range)).toBeTruthy();
+        expect(filterKey(moment.utc('2020-03-06'), range)).toBeFalsy();
     });
 });
 

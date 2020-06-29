@@ -1,5 +1,9 @@
 import _, { findLastKey } from "lodash";
 
+export interface PrimitiveCastable {
+    valueOf: () => string | number;
+}
+
 export interface Filter<T> {
     gt?: T;
     gte?: T;
@@ -14,7 +18,7 @@ export interface ValueRange<T> {
     endClosed: boolean;
 }
 
-export function filterKey<T>(key: T, range: ValueRange<T>): boolean {
+export function filterKey<T extends PrimitiveCastable>(key: T, range: ValueRange<T>): boolean {
     if (isValueRangeEmpty(range)) {
         return false;
     }
@@ -26,13 +30,16 @@ export function filterKey<T>(key: T, range: ValueRange<T>): boolean {
         endClosed,
     } = range;
 
+    let keyValue = key.valueOf();
     if (typeof start !== 'undefined') {
-        if (key < start) return false;
-        if (!startClosed && key == start) return false;
+        let startValue = start.valueOf();
+        if (keyValue < startValue) return false;
+        if (!startClosed && keyValue === startValue) return false;
     }
     if (typeof end !== 'undefined') {
-        if (key > end) return false;
-        if (!endClosed && key == end) return false;
+        let endValue = end.valueOf();
+        if (keyValue > endValue) return false;
+        if (!endClosed && keyValue === endValue) return false;
     }
     return true;
 };
@@ -47,7 +54,7 @@ export function filterKey<T>(key: T, range: ValueRange<T>): boolean {
  *  The start (inclusive) and end (exclusive) indexes of
  *  the keys matching the filter.
  */
-export function filteredIndexRange<T>(keys: T[], range: ValueRange<T>): [number, number] {
+export function filteredIndexRange<T extends PrimitiveCastable>(keys: T[], range: ValueRange<T>): [number, number] {
     if (isValueRangeEmpty(range)) {
         return [0, 0];
     }
