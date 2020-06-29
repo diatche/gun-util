@@ -63,7 +63,7 @@ describe('DateTree #', () => {
     jest.setTimeout(20000);
 
     let treeRoot: IGunChainReference; 
-    let tree: DateTree;
+    let tree: DateTree<string>;
 
     beforeAll(async () => {
         gun = Gun(TEST_GUN_OPTIONS);
@@ -73,7 +73,7 @@ describe('DateTree #', () => {
         // Use a clean node on every run
         runId = uuidv4();
         treeRoot = gun.get(runId);
-        tree = new DateTree(treeRoot, 'day');
+        tree = new DateTree<string>(treeRoot, 'day');
     });
 
     afterAll(() => {
@@ -112,6 +112,33 @@ describe('DateTree #', () => {
             let date = tree.getDate(ref1);
             let ref2 = tree.get(date);
             expect(ref2).toStrictEqual(ref1);
+        });
+    });
+
+    describe('on', () => {
+
+        describe('no filter', () => {
+
+            it('should callback with all the data', done => {
+                tree.get('2020-01-03').put('foo');
+                tree.get('2020-01-06').put('bar');
+                tree.get('2020-01-10').put('gaz');
+
+                let dateFormat = 'YYYY-MM-DD';
+                let cbTable: any = {};
+                tree.on((data, date) => {
+                    let key = date.utc().format(dateFormat);
+                    cbTable[key] = data;
+                    if (Object.keys(cbTable).length === 3) {
+                        expect(cbTable).toMatchObject({
+                            '2020-01-03': 'foo',
+                            '2020-01-06': 'bar',
+                            '2020-01-10': 'gaz',
+                        });
+                        done();
+                    }
+                });
+            });
         });
     });
 

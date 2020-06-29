@@ -21,6 +21,11 @@ type ImmutableDateComponentsUnsafe = {
     readonly [res: string]: number
 };
 
+export type DateMapCallback<T> = (
+    data: T,
+    date: Moment,
+) => void;
+
 /**
  * All date components are natural.
  * For the avoidance of doubt, month 1 is
@@ -71,7 +76,7 @@ export default class DateTree<T = any> {
         return floor;
     }
 
-    map(opts: Filter<DateParsable>, on: (data: T, date: Moment) => void) {
+    on(cb: DateMapCallback<T>, opts: Filter<DateParsable> = {}) {
         let range = rangeWithFilter(opts);
         let {
             start,
@@ -79,41 +84,63 @@ export default class DateTree<T = any> {
             startClosed,
             endClosed,
         } = range;
-        let startComps = (start && DateTree.getDateComponents(start, this.resolution) || {}) as Partial<DateComponentsUnsafe>;
-        let endComps = (end && DateTree.getDateComponents(end, this.resolution) || {}) as Partial<DateComponentsUnsafe>;
-        let comps: DateComponentsUnsafe = {};
+
+        if (!start && !end) {
+            return this._onAny(cb);
+        }
+
+        throw new Error('Not implemented');
+
+        // let startComps = (start && DateTree.getDateComponents(start, this.resolution) || {}) as Partial<DateComponentsUnsafe>;
+        // let endComps = (end && DateTree.getDateComponents(end, this.resolution) || {}) as Partial<DateComponentsUnsafe>;
+        // let comps: DateComponentsUnsafe = {};
+        // let units = this._allUnits();
+        // let commonUnit = DateTree.largestCommonUnit(startComps, endComps);
+        // let commonComps = commonUnit
+        //     ? DateTree.downsampleDateComponents(startComps, commonUnit)
+        //     : {};
+        // let mapTable: any = {};
+        // let eventTable: any = {};
+
+        // const onEvent = (data: any, comps: DateComponents, unit: DateUnit | undefined) => {
+        //     let ref = this._getRef(comps);
+        //     let compKey = DateTree.dateComponentsToString(comps, unit);
+        //     let innerUnit = DateTree.getSmallerUnit(unit || 'year');
+        //     let date: Moment | undefined;
+        //     if (!innerUnit) {
+        //         // Listening to data
+        //         date
+        //     }
+        //     let map = ref.map();
+        //     mapTable[compKey] = map;
+        //     eventTable[compKey] = map.on((data: any, key: string) => {
+        //         let innerComps = { ...comps, [innerUnit] }
+        //          if (innerUnit) {
+        //             // Map deeper
+        //          } else {
+        //             // Got data
+        //             let date = 
+        //             on(data, )
+        //          }
+        //     });
+        // };
+
+        // onEvent(undefined, commonComps, commonUnit);
+    }
+
+    private _onAny(cb: DateMapCallback<T>) {
         let units = this._allUnits();
-        let commonUnit = DateTree.largestCommonUnit(startComps, endComps);
-        let commonComps = commonUnit
-            ? DateTree.downsampleDateComponents(startComps, commonUnit)
-            : {};
-        let mapTable: any = {};
-        let eventTable: any = {};
+        let ref = this.root.map();
 
-        const onEvent = (data: any, comps: DateComponents, unit: DateUnit | undefined) => {
-            let ref = this._getRef(comps);
-            let compKey = DateTree.dateComponentsToString(comps, unit);
-            let innerUnit = DateTree.getSmallerUnit(unit || 'year');
-            let date: Moment | undefined;
-            if (!innerUnit) {
-                // Listening to data
-                date
-            }
-            let map = ref.map();
-            mapTable[compKey] = map;
-            eventTable[compKey] = map.on((data: any, key: string) => {
-                let innerComps = { ...comps, [innerUnit] }
-                 if (innerUnit) {
-                    // Map deeper
-                 } else {
-                    // Got data
-                    let date = 
-                    on(data, )
-                 }
-            });
-        };
+        for (let i = 0; i < units.length - 1; i++) {
+            ref = ref.map();
+            
+        }
 
-        onEvent(undefined, commonComps, commonUnit);
+        return (ref as any).on((data: T, key: string, at: any, event: any) => {
+            let date = this.getDate(at);
+            cb(data, date);
+        });
     }
 
     /**
@@ -208,16 +235,27 @@ export default class DateTree<T = any> {
         let currentRef: any = ref;
         let units = this._allUnits();
         let keys: string[] = [];
-        while (currentRef && keys.length < units.length) {
-            if (currentRef === this.root) {
-                throw new Error('Invalid Gun node reference. Expected a leaf on the date tree.');
-            }
-            let key = currentRef._.get;
-            keys.unshift(key);
-            currentRef = currentRef.back();
+        const getKey = (ref: any) => {
+            return ref._?.get || ref.get || ref.$?.get || ref.$?._?.get;
         }
-        if (currentRef !== this.root) {
-            throw new Error('Invalid Gun node reference. Expected a leaf on the date tree.');
+        const rootKey = getKey(this.root);
+        while (currentRef && keys.length < units.length) {
+            let key = getKey(currentRef);
+            if (!key || key === rootKey) {
+                throw invalidLeafError();
+            }
+            keys.unshift(key);
+            let back = currentRef.back || currentRef.$?._?.back;
+            if (!back) {
+                throw invalidLeafError();
+            } else if (typeof back === 'function') {
+                currentRef = back();
+            } else {
+                currentRef = back;
+            }
+        }
+        if (getKey(currentRef) !== rootKey) {
+            throw invalidLeafError();
         }
         let values = keys.map(k => DateTree.decodeDateComponent(k));
         let comps: DateComponentsUnsafe = _.zipObject(units, values);
@@ -710,3 +748,6 @@ const DATE_COMP_PADS: { readonly [K in DateUnit]: number } = (() => {
 //     }
 //     return sets as Omit<{ readonly [K in DateUnit]: Set<string> }, 'year'>;
 // })();
+
+
+const invalidLeafError = () => new Error('Invalid Gun node reference. Expected a leaf on the date tree.');

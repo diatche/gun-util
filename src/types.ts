@@ -37,3 +37,16 @@ export interface IGunFilter {
     /** 1: Reverse direction */
     '-'?: 0 | 1;
 }
+
+export type ExpandedCallback<T = any> = (
+    data: T,
+    key: string,
+    at: {
+        /** The node's key. */
+        get: string,
+    },
+    event: {
+        /** Unsubscribe from events. */
+        off: () => void,
+    }
+) => void;
