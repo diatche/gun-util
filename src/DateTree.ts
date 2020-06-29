@@ -245,13 +245,14 @@ export default class DateTree<T = any> {
                 throw invalidLeafError();
             }
             keys.unshift(key);
-            let back = currentRef.back || currentRef.$?._?.back;
-            if (!back) {
-                throw invalidLeafError();
-            } else if (typeof back === 'function') {
-                currentRef = back();
+            if (typeof currentRef.back === 'function') {
+                // Using concrete reference
+                currentRef = currentRef.back();
+            } else if (currentRef.$?._?.back === 'object') {
+                // Using reference from callback
+                currentRef = currentRef.$?._?.back;
             } else {
-                currentRef = back;
+                throw invalidLeafError();
             }
         }
         if (getKey(currentRef) !== rootKey) {
