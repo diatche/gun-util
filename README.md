@@ -64,7 +64,25 @@ tree.get('2020-08-23').put({ event: 'of a lifetime' });
 treeRoot.get('2020').get('08').get('23').put({ event: 'of a lifetime' });
 ```
 
-**Getting latest data:**
+**Subscribing to data:**
+
+```javascript
+// Subscribe to tree data with a filter
+tree.on((data, date) => {
+    console.log(`${date.toISOString()}: ${JSON.stringify(data)}`);
+}, { gte: '2009-02-01' });
+
+// Modify tree data
+tree.get('1995-10-04T10:23:54.345Z').put('distant past');
+tree.get('2010-04-05T15:34:17.234Z').put('past');
+tree.get(new Date()).put('now');
+
+// Output:
+// 2010-04-05T15:34:17.234Z: "past"
+// 2020-06-29T21:28:59.229Z: "now"
+```
+
+**Getting latest data once:**
 
 ```javascript
 await tree.get(new Date()).put({ event: 'insider info' }).then();

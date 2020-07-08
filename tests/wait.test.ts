@@ -23,7 +23,6 @@ describe('wait', () => {
             let t1 = moment();
             let e = t1.valueOf() - t0.valueOf() - 100;
             expect(e).toBeGreaterThanOrEqual(0);
-            expect(e).toBeLessThan(10);
             expect(x).toEqual('foo');
         });
     });

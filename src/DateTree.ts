@@ -2,8 +2,14 @@ import { IGunChainReference } from "gun/types/chain";
 import _ from 'lodash';
 import moment, { Moment } from 'moment';
 import { IterateOptions, iterateRefs } from "./iterate";
-import { AckCallback } from "gun/types/types";
-import { rangeWithFilter, filterWithRange } from "./filter";
+import {
+    rangeWithFilter,
+    filterWithRange,
+    Filter,
+    ValueRange,
+    isInRange,
+    mapValueRange,
+} from "./filter";
 
 export type DateUnit = 'year' | 'month' | 'day' | 'hour' | 'minute' | 'second' | 'millisecond';
 
@@ -18,9 +24,23 @@ export type DateParsable = Moment | Date | string | number;
 const ZERO_DATE = moment.utc().startOf('year').set('year', 1);
 
 type DateComponentsUnsafe = { [res: string]: number };
-type ImmutableDateComponentsUnsafe = {
-    readonly [res: string]: number
-};
+
+/**
+ * Provides a way of managing a subscription.
+ */
+export interface Subscription {
+    /** Unsubscribe from events. */
+    off: () => void;
+}
+
+export type DateEventOptions = Filter<DateParsable>;
+
+export type DateEventCallback<T> = (
+    data: T,
+    date: Moment,
+    at: any,
+    sub: Subscription
+) => void;
 
 /**
  * All date components are natural.
@@ -73,6 +93,152 @@ export default class DateTree<T = any> {
     }
 
     /**
+     * Subscribes to data in a date range.
+     * It is recommended to limit the date range
+     * as much as possible to avoid creating too
+     * many internal data subscriptions, which slows
+     * down program execution.
+     * 
+     * The data is not ordered.
+     * 
+     * If no date range is given, subscribes to changes
+     * on any date (not recommended on larger trees).
+     * 
+     * @param cb 
+     * @param opts 
+     * @returns A {@link Subscription} object.
+     */
+    on(cb: DateEventCallback<T>, opts: DateEventOptions = {}): Subscription {
+        // TODO: add updates support
+        let range = mapValueRange(
+            rangeWithFilter(opts),
+            parseDate
+        );
+        let {
+            start,
+            end,
+            startClosed,
+            endClosed,
+        } = range;
+
+        if (!start && !end) {
+            return this._onAny(cb);
+        }
+
+        let startComps = (start && DateTree.getDateComponents(start, this.resolution) || {}) as Partial<DateComponentsUnsafe>;
+        let endComps = (end && DateTree.getDateComponents(end, this.resolution) || {}) as Partial<DateComponentsUnsafe>;
+        let commonUnit = DateTree.largestCommonUnit(startComps, endComps);
+        let commonComps = commonUnit
+            ? DateTree.downsampleDateComponents(startComps, commonUnit)
+            : {};
+        let mapTable: any = {};
+        let subTable: { [key: string]: Subscription } = {};
+        let didUnsub = false;
+
+        let commonSub: Subscription = {
+            off: () => {
+                if (didUnsub) {
+                    return;
+                }
+                didUnsub = true;
+                for (let sub of Object.values(subTable)) {
+                    sub.off();
+                }
+                subTable = {};
+            }
+        };
+
+        const beginSub = (comps: DateComponents, unit: DateUnit | undefined) => {
+            if (didUnsub) {
+                return;
+            }
+            let compKey = DateTree.dateComponentsToString(comps, unit);
+            if (compKey in mapTable) {
+                // Already subscribed
+                return;
+            }
+            let innerRef: any = this._getRef(comps);
+            let innerUnit = unit ? DateTree.getSmallerUnit(unit) : 'year';
+
+            // Filter inner keys if needed
+            let innerRange = DateTree.getDateComponentKeyRange(
+                comps,
+                {
+                    start: startComps,
+                    end: endComps,
+                    startClosed,
+                    endClosed
+                },
+                innerUnit!,
+                this.resolution
+            );
+            let {
+                start: innerStart,
+                end: innerEnd
+            } = innerRange;
+            if (typeof innerStart !== 'undefined' || typeof innerEnd !== 'undefined') {
+                // Filter inner keys
+                let lexRange: any = {};
+                if (typeof innerStart !== 'undefined') {
+                    // Start filter is inclusive
+                    lexRange['>'] = innerStart;
+                }
+                if (typeof innerEnd !== 'undefined') {
+                    // End filter is inclusive
+                    lexRange['<'] = innerEnd;
+                }
+                innerRef = innerRef.get({ '.': lexRange });
+            }
+
+            let map = innerRef.map();
+            mapTable[compKey] = map;
+            subTable[compKey] = map;
+            map.on((data: any, key: string, at: any, innerSub: Subscription) => {
+                if (didUnsub) {
+                    return;
+                }
+                // Subscription method inside the callback seem to be
+                // more reliable.
+                subTable[compKey] = innerSub;
+
+                let value = DateTree.decodeDateComponent(key);
+                let innerComps = { ...comps, [innerUnit!]: value };
+                if (innerUnit === this.resolution) {
+                    // Got data
+                    let date = DateTree.getDateWithComponents(innerComps);
+                    // Filter boundaries
+                    if (isInRange(date, range)) {
+                        cb(data, date, at, commonSub);
+                    }
+                } else {
+                    // Map deeper
+                    beginSub(innerComps, innerUnit);
+                }
+            });
+        };
+
+        // Begin subscribing
+        beginSub(commonComps, commonUnit);
+
+        return commonSub;
+    }
+
+    private _onAny(cb: DateEventCallback<T>): Subscription {
+        // TODO: opts.updates = true not working as expected
+        let units = this._allUnits();
+        let ref = this.root.map();
+
+        for (let i = 0; i < units.length - 1; i++) {
+            ref = ref.map();
+        }
+
+        return (ref as any).on((data: T, key: string, at: any, event: any) => {
+            let date = this.getDate(at);
+            cb(data, date, at, event);
+        });
+    }
+
+    /**
      * Listens to changes about the specified date.
      * 
      * Let's say we want to listen to changes to a blog described
@@ -104,27 +270,41 @@ export default class DateTree<T = any> {
      * 
      * @returns An unsubscribe function
      */
-    changesAbout(date: DateParsable, callback: (comps: DateComponents) => void): { off: () => void } {
+    changesAbout(date: DateParsable, callback: (comps: DateComponents, sub: Subscription) => void): Subscription {
         let m = parseDate(date);
         let comps = DateTree.getDateComponents(m, this.resolution);
         let units = Object.keys(comps);
-        let refs = this._getRefChain(m);
+        let refs = this._getRefChain(comps);
         let refTable = _.zipObject(units, refs);
-        let eventsTable: { [unit: string]: IGunChainReference } = {};
+        let subTable: { [unit: string]: Subscription } = {};
+        let didUnsub = false;
 
-        let off = () => {
-            if (_.isEmpty(eventsTable)) {
-                return;
+        let commonSub: Subscription = {
+            off: () => {
+                if (didUnsub) {
+                    return;
+                }
+                didUnsub = true;
+                for (let sub of Object.values(subTable)) {
+                    sub.off();
+                }
+                subTable = {};
             }
-            _.forIn(eventsTable, (events, unit) => {
-                events.off();
-            });
-            eventsTable = {};
         };
 
-        _.forIn(refTable, (ref, unit) => {
-            let events = ref.on(changes => {
+        _.forIn(refTable, (ref: any, unit: string) => {
+            ref.on((changes: any, outerKey: string, at: any, sub: Subscription) => {
                 // Received changes
+                if (didUnsub) {
+                    // Already unsubscribed
+                    return;
+                }
+
+                // Subscription method inside the callback seem to be
+                // more reliable.
+                subTable[unit] = sub;
+
+                // Get data
                 _.forIn(changes, (val, key) => {
                     if (key === '_') {
                         // Meta
@@ -144,15 +324,15 @@ export default class DateTree<T = any> {
                     }
 
                     try {
-                        callback(changeComps);
+                        callback(changeComps, commonSub);
                     } catch (error) {
                         console.error(`Uncaught error in DateTree: ${error}`);
                     }
                 });
             }, { change: true });
-            eventsTable[unit] = events;
+            subTable[unit] = ref;
         });
-        return { off };
+        return commonSub;
     }
 
     /**
@@ -164,15 +344,36 @@ export default class DateTree<T = any> {
         let currentRef: any = ref;
         let units = this._allUnits();
         let keys: string[] = [];
-        while (currentRef && keys.length < units.length) {
-            if (currentRef === this.root) {
-                throw new Error('Invalid Gun node reference. Expected a leaf on the date tree.');
-            }
-            let key = currentRef._.get;
-            keys.unshift(key);
-            currentRef = currentRef.back();
+        let ok = true;
+        const getKey = (ref: any) => {
+            return ref._?.get || ref.get || ref.$?.get || ref.$?._?.get;
         }
-        if (currentRef !== this.root) {
+        const rootKey = getKey(this.root);
+        while (currentRef && keys.length < units.length) {
+            let key = getKey(currentRef);
+            if (!key || key === rootKey) {
+                ok = false;
+                break;
+            }
+            keys.unshift(key);
+            if (typeof currentRef.back === 'function') {
+                // Using concrete reference
+                currentRef = currentRef.back();
+            } else if (typeof currentRef.$?._?.back === 'object') {
+                // Using reference from callback
+                currentRef = currentRef.$?._?.back;
+            } else if (typeof currentRef.$?.back === 'function') {
+                // Using reference from callback
+                currentRef = currentRef.$?.back();
+            } else {
+                ok = false;
+                break;
+            }
+        }
+        if (getKey(currentRef) !== rootKey) {
+            ok = false;
+        }
+        if (!ok) {
             throw new Error('Invalid Gun node reference. Expected a leaf on the date tree.');
         }
         let values = keys.map(k => DateTree.decodeDateComponent(k));
@@ -188,12 +389,16 @@ export default class DateTree<T = any> {
      * @returns Gun node reference
      */
     get(date: DateParsable): IGunChainReference<T> {
-        let chain = this._getRefChain(parseDate(date));
+        let comps = DateTree.getDateComponents(parseDate(date), this.resolution);
+        let chain = this._getRefChain(comps);
         return chain[chain.length - 1] as any;
     }
 
-    private _getRefChain(date: Moment): IGunChainReference[] {
-        let comps = DateTree.getDateComponents(date, this.resolution);
+    /**
+     * Assumes the date components are clean (with no other properties).
+     * @param comps 
+     */
+    private _getRefChain(comps: DateComponents): IGunChainReference[] {
         let ref = this.root;
         let refs = [ref];
         _.forIn(comps, (val, unit) => {
@@ -202,6 +407,15 @@ export default class DateTree<T = any> {
             refs.push(ref);
         });
         return refs;
+    }
+
+    /**
+     * Assumes the date components are clean (with no other properties).
+     * @param comps 
+     */
+    private _getRef(comps: DateComponents): IGunChainReference {
+        let chain = this._getRefChain(comps);
+        return chain[chain.length - 1];
     }
 
     /**
@@ -300,23 +514,21 @@ export default class DateTree<T = any> {
         while (unitIndex >= 0) {
             let goUp = false;
             let unit = units[unitIndex];
-            let [startVal, endVal] = DateTree.getDateComponentRange(
-                comps,
-                startComps,
-                endComps,
-                unit
-            );
             let atLeaf = unitIndex === unitsLen - 1;
-            let unitStartInclusive = startClosed || !atLeaf;
-            let unitEndInclusive = endClosed || !atLeaf;
             if (ref) {
                 // Queue another node for iteration
-                let filter = filterWithRange({
-                    start: DateTree.encodeDateComponent(startVal, unit),
-                    end: DateTree.encodeDateComponent(endVal, unit),
-                    startClosed: unitStartInclusive,
-                    endClosed: unitEndInclusive,
-                });
+                let range = DateTree.getDateComponentKeyRange(
+                    comps,
+                    {
+                        start: startComps,
+                        end: endComps,
+                        startClosed,
+                        endClosed
+                    },
+                    unit,
+                    this.resolution
+                );
+                let filter = filterWithRange(range);
                 it = this._iterateRef(ref, {
                     ...filter,
                     order,
@@ -435,6 +647,24 @@ export default class DateTree<T = any> {
         return graphDateValue(val, unit);
     }
 
+    /**
+     * Returns the largest common unit between two date components.
+     * If none is found, returns undefined
+     * @param comp1 
+     * @param comp2 
+     */
+    static largestCommonUnit(comp1: DateComponents, comp2: DateComponents): DateUnit | undefined {
+        let commonUnit: DateUnit | undefined;
+        for (let unit of ALL_DATE_UNITS) {
+            if (comp1[unit] === comp2[unit]) {
+                commonUnit = unit;
+            } else {
+                break;
+            }
+        }
+        return commonUnit;
+    }
+
     static encodeDateComponent(value: number | undefined, unit: DateUnit): string | undefined {
         if (typeof value === 'undefined') {
             return undefined;
@@ -459,6 +689,29 @@ export default class DateTree<T = any> {
             }
         }
         return newComponents;
+    }
+
+    static getDateComponentKeyRange(
+        comps: DateComponents,
+        compRange: Required<ValueRange<DateComponents>>,
+        unit: DateUnit,
+        resolution: DateUnit,
+    ): ValueRange<string> {
+        let [startVal, endVal] = DateTree.getDateComponentRange(
+            comps,
+            compRange.start,
+            compRange.end,
+            unit
+        );
+        let atLeaf = unit === resolution;
+        let unitStartClosed = compRange.startClosed || !atLeaf;
+        let unitEndClosed = compRange.endClosed || !atLeaf;
+        return {
+            start: DateTree.encodeDateComponent(startVal, unit),
+            end: DateTree.encodeDateComponent(endVal, unit),
+            startClosed: unitStartClosed,
+            endClosed: unitEndClosed,
+        };
     }
 
     static getDateComponentRange(
@@ -508,6 +761,42 @@ export default class DateTree<T = any> {
         let i = ALL_DATE_UNITS.indexOf(unit);
         if (i === ALL_DATE_UNITS.length - 1) return undefined;
         return ALL_DATE_UNITS[i + 1];
+    }
+
+    static dateComponentsToString(comp: DateComponents, resolution?: DateUnit): string {
+        let str = '';
+        for (let unit of ALL_DATE_UNITS) {
+            if (!(resolution || unit in comp)) {
+                break;
+            }
+            let val = this.encodeDateComponent(comp[unit], unit);
+            switch (unit) {
+                case 'year':
+                    break;
+                case 'month':
+                case 'day':
+                    str += '-';
+                    break;
+                case 'hour':
+                    str += 'T';
+                    break;
+                case 'minute':
+                case 'second':
+                    str += ':';
+                    break;
+                case 'millisecond':
+                    str += '.';
+                    break;
+            }
+            str += val;
+            if (unit === 'millisecond') {
+                str += 'Z';
+            }
+            if (unit === resolution) {
+                break;
+            }
+        }
+        return str;
     }
 
     /**

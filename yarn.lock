@@ -1635,9 +1635,9 @@ growly@^1.3.0:
   resolved "https://registry.yarnpkg.com/growly/-/growly-1.3.0.tgz#f10748cbe76af964b7c96c93c6bcc28af120c081"
   integrity sha1-8QdIy+dq+WS3yWyTxrzCivEgwIE=
 
-"gun@git+https://github.com/amark/gun.git#3e678b8568a4a8a825b84b26759d4dd4f3b0988e":
+"gun@git+https://github.com/amark/gun.git#97aa976c97e6219a9f93095d32c220dcd371ca62":
   version "0.2020.520"
-  resolved "git+https://github.com/amark/gun.git#3e678b8568a4a8a825b84b26759d4dd4f3b0988e"
+  resolved "git+https://github.com/amark/gun.git#97aa976c97e6219a9f93095d32c220dcd371ca62"
   dependencies:
     ws "^7.2.1"
   optionalDependencies:

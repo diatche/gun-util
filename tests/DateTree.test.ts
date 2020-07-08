@@ -1,5 +1,6 @@
 import { IGunChainReference } from "gun/types/chain";
 import { TEST_GUN_OPTIONS } from "../src/const";
+import { delay } from "../src/wait";
 import Gun from "gun";
 import DateTree, { DateComponents } from "../src/DateTree";
 import moment from "moment";
@@ -63,7 +64,7 @@ describe('DateTree #', () => {
     jest.setTimeout(20000);
 
     let treeRoot: IGunChainReference; 
-    let tree: DateTree;
+    let tree: DateTree<string>;
 
     beforeAll(async () => {
         gun = Gun(TEST_GUN_OPTIONS);
@@ -73,7 +74,7 @@ describe('DateTree #', () => {
         // Use a clean node on every run
         runId = uuidv4();
         treeRoot = gun.get(runId);
-        tree = new DateTree(treeRoot, 'day');
+        tree = new DateTree<string>(treeRoot, 'day');
     });
 
     afterAll(() => {
@@ -115,6 +116,200 @@ describe('DateTree #', () => {
         });
     });
 
+    describe('on', () => {
+
+        describe('no filter', () => {
+
+            it('should callback with all the data', done => {
+                tree.get('2020-01-03').put('foo');
+                tree.get('2020-01-06').put('bar');
+                tree.get('2020-01-10').put('gaz');
+
+                let dateFormat = 'YYYY-MM-DD';
+                let cbTable: any = {};
+                tree.on((data, date) => {
+                    let key = date.utc().format(dateFormat);
+                    cbTable[key] = data;
+                    if (Object.keys(cbTable).length === 3) {
+                        expect(cbTable).toMatchObject({
+                            '2020-01-03': 'foo',
+                            '2020-01-06': 'bar',
+                            '2020-01-10': 'gaz',
+                        });
+                        done();
+                    }
+                });
+            });
+
+            it('should not callback after off', async (done) => {
+                let dateFormat = 'YYYY-MM-DD';
+
+                let cbTable: any = {};
+                tree.on((data, date, at, sub) => {
+                    let key = date.utc().format(dateFormat);
+                    cbTable[key] = data;
+                    if (key === '2020-01-03') {
+                        sub.off();
+                    }
+                });
+
+                let allCbTable: any = {};
+                tree.on((data, date) => {
+                    let key = date.utc().format(dateFormat);
+                    allCbTable[key] = data;
+                    if (Object.keys(allCbTable).length === 3) {
+                        expect(cbTable).toMatchObject({
+                            '2020-01-03': 'foo',
+                        });
+                        done();
+                    }
+                });
+
+                tree.get('2020-01-03').put('foo');
+                await delay(100);
+                tree.get('2020-01-06').put('bar');
+                await delay(100);
+                tree.get('2020-01-10').put('gaz');
+            }, 40000);
+
+            it.skip('should callback with updates', async (done) => {
+                // TODO: enable when support added
+                let promises: any = [];
+                promises.push(tree.get('2020-01-03').put('foo').then!());
+                promises.push(tree.get('2020-01-06').put('bar').then!());
+                await Promise.all(promises);
+                await delay(1000);
+
+                let dateFormat = 'YYYY-MM-DD';
+                tree.on((data, date) => {
+                    let key = date.utc().format(dateFormat);
+                    expect(data).toBe('gaz');
+                    expect(key).toBe('2020-01-10');
+                    done();
+                }, { updates: true } as any);
+
+                tree.get('2020-01-10').put('gaz');
+            });
+        });
+
+        describe('with filter', () => {
+
+            it('should callback with all the data with super set range', done => {
+                treeRoot = gun.get(runId);
+                tree = new DateTree<string>(treeRoot, 'millisecond');
+
+                let d1 = moment('2020-01-03T10:23:56.344Z').toISOString();
+                tree.get(d1).put('foo');
+                let d2 = moment('2020-01-06T15:34:17.762Z').toISOString();
+                tree.get(d2).put('bar');
+
+                let cbTable: any = {};
+                tree.on((data, date) => {
+                    let key = date.utc().toISOString();
+                    cbTable[key] = data;
+                    if (Object.keys(cbTable).length === 2) {
+                        expect(cbTable).toMatchObject({
+                            [d1]: 'foo',
+                            [d2]: 'bar',
+                        });
+                        done();
+                    }
+                }, { gte: '2020-01-03' });
+            });
+
+            it('should not callback after off', async (done) => {
+                let dateFormat = 'YYYY-MM-DD';
+
+                let cbTable: any = {};
+                tree.on((data, date, at, sub) => {
+                    let key = date.utc().format(dateFormat);
+                    cbTable[key] = data;
+                    if (key === '2020-01-03') {
+                        sub.off();
+                    }
+                }, { gte: '2020-01-03' });
+
+                let allCbTable: any = {};
+                tree.on((data, date) => {
+                    let key = date.utc().format(dateFormat);
+                    allCbTable[key] = data;
+                    if (Object.keys(allCbTable).length === 3) {
+                        expect(cbTable).toMatchObject({
+                            '2020-01-03': 'foo',
+                        });
+                        done();
+                    }
+                }, { gte: '2020-01-03' });
+
+                tree.get('2020-01-03').put('foo');
+                await delay(100);
+                tree.get('2020-01-06').put('bar');
+                await delay(100);
+                tree.get('2020-01-10').put('gaz');
+            }, 40000);
+
+            it('should callback with data in open set', done => {
+                tree.get('2020-01-03').put('foo');
+                tree.get('2020-02-04').put('bar1');
+                tree.get('2020-02-09').put('bar2');
+                tree.get('2020-03-10').put('gaz');
+
+                let dateFormat = 'YYYY-MM-DD';
+                let cbTable: any = {};
+                tree.on((data, date) => {
+                    let key = date.utc().format(dateFormat);
+                    cbTable[key] = data;
+                    if (Object.keys(cbTable).length === 2) {
+                        expect(cbTable).toMatchObject({
+                            '2020-02-04': 'bar1',
+                            '2020-02-09': 'bar2',
+                        });
+                        done();
+                    }
+                }, { gt: '2020-01-03', lt: '2020-03-10' });
+            });
+
+            it('should callback with data in closed set', done => {
+                tree.get('2020-01-03').put('foo');
+                tree.get('2020-02-04').put('bar1');
+                tree.get('2020-02-09').put('bar2');
+                tree.get('2020-03-10').put('gaz');
+
+                let dateFormat = 'YYYY-MM-DD';
+                let cbTable: any = {};
+                tree.on((data, date) => {
+                    let key = date.utc().format(dateFormat);
+                    cbTable[key] = data;
+                    if (Object.keys(cbTable).length === 2) {
+                        expect(cbTable).toMatchObject({
+                            '2020-02-04': 'bar1',
+                            '2020-02-09': 'bar2',
+                        });
+                        done();
+                    }
+                }, { gte: '2020-02-04', lte: '2020-02-09' });
+            });
+
+            it.skip('should callback with updates', async (done) => {
+                // TODO: enable when support added
+                let promises: any = [];
+                promises.push(tree.get('2020-01-03').put('foo').then!());
+                promises.push(tree.get('2020-01-06').put('bar').then!());
+                await Promise.all(promises);
+
+                let dateFormat = 'YYYY-MM-DD';
+                tree.on((data, date) => {
+                    let key = date.utc().format(dateFormat);
+                    expect(data).toBe('gaz');
+                    expect(key).toBe('2020-01-10');
+                    done();
+                }, { gte: '2020-01-03', updates: true } as any);
+
+                tree.get('2020-01-10').put('gaz');
+            });
+        });
+    });
+
     describe('changesAbout', () => {
 
         it('should callback with changes', async () => {
@@ -148,26 +343,39 @@ describe('DateTree #', () => {
             ]);
         });
 
-        it.skip('should not callback after unsubscribe', async () => {
+        it.skip('should not callback after unsubscribe', async (done) => {
             // TOOD: For some reason, this fails on dev machine, but passes in CI.
-            let compsStack: DateComponents[] = [];
-            let sub = tree.changesAbout(
-                moment.utc('2020-01-04'),
-                comps => compsStack.push(comps),
-            );
-            await tree.get(moment.utc('2020-01-05')).put('a' as never).then!();
-            await tree.get(moment.utc('2020-01-06')).put('a' as never).then!();
-            sub.off();
-            await tree.get(moment.utc('2020-02-01')).put('a' as never).then!();
-            let receivedDates = compsStack
-                .map(c => DateTree.getDateWithComponents(c).format('YYYY-MM-DD'))
-                .sort();
-            receivedDates = _.uniq(receivedDates);
-            expect(receivedDates).toEqual([
+            let keys = new Set<string>();
+            let sub = tree.changesAbout('2020-01-04', comps => {
+                let key = DateTree.dateComponentsToString(comps);
+                expect(key).toMatch(/2020-01.*/);
+                keys.add(key);
+            });
+
+            let queue = [
                 '2020-01-05',
                 '2020-01-06',
-            ]);
-        });
+                '2020-02-01',
+                '2020-02-03',
+            ];
+            tree.changesAbout('2020-01-04', comps => {
+                if (queue.length !== 0) {
+                    let date = queue.shift()!;
+                    if (date === '2020-01-06') {
+                        sub.off();
+                    }
+                    tree.get(date).put('a');
+                } else {
+                    expect(Array.from(keys).sort()).toEqual([
+                        '2020-01-05',
+                        '2020-01-06'
+                    ]);
+                    done();
+                }
+            });
+
+            tree.get(queue.shift()!).put('a');
+        }, 40000);
     });
 
     describe('iterate', () => {
