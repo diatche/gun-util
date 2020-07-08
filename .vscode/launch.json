@@ -12,7 +12,6 @@
             ],
             "type": "node"
         },
-
         {
             "type": "node",
             "request": "launch",
@@ -26,6 +25,13 @@
             "windows": {
                 "program": "${workspaceFolder}/node_modules/jest/bin/jest"
             }
+        },
+        {
+            "name": "Debug In Chrome",
+            "request": "launch",
+            "type": "chrome",
+            "url": "file://${workspaceFolder}/${relativeFile}",
+            "webRoot": "${relativeFile}"
         }
     ]
 }
