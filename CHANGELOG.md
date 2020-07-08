@@ -4,6 +4,8 @@
 
 Changes on `develop` will be listed here.
 
+## 0.0.7
+
 ### Features
 
 - Added `DateTree#.on()` method, which allows subscribing to all or a subset of
