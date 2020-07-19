@@ -111,6 +111,6 @@ describe('encryption', () => {
                 error = e;
             }
             expect(error).toBeInstanceOf(Error);
-        }, 40000);
+        }, 60000);
     });
 });
