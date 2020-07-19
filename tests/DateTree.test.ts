@@ -63,6 +63,7 @@ describe('DateTree', () => {
 describe('DateTree #', () => {
     jest.setTimeout(20000);
 
+    let root: IGunChainReference; 
     let treeRoot: IGunChainReference; 
     let tree: DateTree<string>;
 
@@ -73,7 +74,8 @@ describe('DateTree #', () => {
     beforeEach(() => {
         // Use a clean node on every run
         runId = uuidv4();
-        treeRoot = gun.get(runId);
+        root = gun.get(runId);
+        treeRoot = gun.get(runId).get('tree');
         tree = new DateTree<string>(treeRoot, 'day');
     });
 
@@ -120,7 +122,7 @@ describe('DateTree #', () => {
 
         describe('no filter', () => {
 
-            it('should callback with all the data', done => {
+            it('should callback with primitive data', done => {
                 tree.get('2020-01-03').put('foo');
                 tree.get('2020-01-06').put('bar');
                 tree.get('2020-01-10').put('gaz');
@@ -141,7 +143,41 @@ describe('DateTree #', () => {
                 });
             });
 
+            it('should callback with object data', done => {
+                expect.assertions(1);
+                tree.get('2020-01-03').get('foo' as never).put({ label: 'foo1' } as never);
+                tree.get('2020-01-03').get('bar' as never).put({ label: 'bar1' } as never);
+                tree.get('2020-01-03').get('gaz' as never).put({ label: 'gaz1' } as never);
+
+                tree.on((data, date) => {
+                    let keys = Object.keys(_.omit(data as any, '_'));
+                    if (keys.length === 3) {
+                        expect(keys.sort()).toEqual(['bar', 'foo', 'gaz']);
+                        done();
+                    }
+                });
+            });
+
+            it('should callback with references', done => {
+                expect.assertions(1);
+                let foo = root.get('foo').put({ label: 'foo1' } as never);
+                let bar = root.get('bar').put({ label: 'bar1' } as never);
+                let gaz = root.get('gaz').put({ label: 'gaz1' } as never);
+                tree.get('2020-01-03').get('foo' as never).put(foo as never);
+                tree.get('2020-01-03').get('bar' as never).put(bar as never);
+                tree.get('2020-01-03').get('gaz' as never).put(gaz as never);
+
+                tree.on((data, date) => {
+                    let keys = Object.keys(_.omit(data as any, '_'));
+                    if (keys.length === 3) {
+                        expect(keys.sort()).toEqual(['bar', 'foo', 'gaz']);
+                        done();
+                    }
+                });
+            });
+
             it('should not callback after off', async (done) => {
+                expect.assertions(1);
                 let dateFormat = 'YYYY-MM-DD';
 
                 let cbTable: any = {};
@@ -174,6 +210,7 @@ describe('DateTree #', () => {
 
             it.skip('should callback with updates', async (done) => {
                 // TODO: enable when support added
+                expect.assertions(2);
                 let promises: any = [];
                 promises.push(tree.get('2020-01-03').put('foo').then!());
                 promises.push(tree.get('2020-01-06').put('bar').then!());
@@ -195,6 +232,7 @@ describe('DateTree #', () => {
         describe('with filter', () => {
 
             it('should callback with all the data with super set range', done => {
+                expect.assertions(1);
                 treeRoot = gun.get(runId);
                 tree = new DateTree<string>(treeRoot, 'millisecond');
 
@@ -207,17 +245,19 @@ describe('DateTree #', () => {
                 tree.on((data, date) => {
                     let key = date.utc().toISOString();
                     cbTable[key] = data;
-                    if (Object.keys(cbTable).length === 2) {
+                    if (done && Object.keys(cbTable).length === 2) {
                         expect(cbTable).toMatchObject({
                             [d1]: 'foo',
                             [d2]: 'bar',
                         });
                         done();
+                        (done as any) = undefined;
                     }
                 }, { gte: '2020-01-03' });
             });
 
             it('should not callback after off', async (done) => {
+                expect.assertions(1);
                 let dateFormat = 'YYYY-MM-DD';
 
                 let cbTable: any = {};
@@ -249,6 +289,7 @@ describe('DateTree #', () => {
             }, 40000);
 
             it('should callback with data in open set', done => {
+                expect.assertions(1);
                 tree.get('2020-01-03').put('foo');
                 tree.get('2020-02-04').put('bar1');
                 tree.get('2020-02-09').put('bar2');
@@ -270,6 +311,7 @@ describe('DateTree #', () => {
             });
 
             it('should callback with data in closed set', done => {
+                expect.assertions(1);
                 tree.get('2020-01-03').put('foo');
                 tree.get('2020-02-04').put('bar1');
                 tree.get('2020-02-09').put('bar2');
@@ -292,6 +334,7 @@ describe('DateTree #', () => {
 
             it.skip('should callback with updates', async (done) => {
                 // TODO: enable when support added
+                expect.assertions(2);
                 let promises: any = [];
                 promises.push(tree.get('2020-01-03').put('foo').then!());
                 promises.push(tree.get('2020-01-06').put('bar').then!());
