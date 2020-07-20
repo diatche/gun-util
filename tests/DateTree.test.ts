@@ -422,7 +422,7 @@ describe('DateTree #', () => {
         }, 40000);
     });
 
-    describe('iterate', () => {
+    describe('iterate (primitive)', () => {
 
         // The data is in descending order intentionally
         let data: { [date: string]: string } = {
@@ -529,6 +529,62 @@ describe('DateTree #', () => {
                 let value = await ref.then!();
                 expect(value).toBe(data[date]);
             }
+        });
+    });
+
+    describe('iterate (objects)', () => {
+
+        // The data is in descending order intentionally
+        let data: { [date: string]: any } = {
+            '2019-12-31': {
+                foo1: 'f1',
+            },
+            '2020-01-01': {
+                bar1: 'b1',
+                bar2: 'b2',
+            },
+            '2020-01-02': {
+                gaz1: 'g1',
+            },
+        }
+
+        beforeEach(async () => {
+            // Add data to graph
+            let promises: any[] = [];
+            _.forIn(data, (value, dateStr) => {
+                let ref = tree.get(dateStr).put(value as never);
+                promises.push(ref.then!());
+            });
+            await Promise.all(promises);
+        });
+
+        it('should iterate over all data in ascending order by default', async () => {
+            let data = await iterateAll(tree.iterate());
+            let [dates, refs] = _.unzip(data.map(d => {
+                let [ref, date] = d;
+                return [
+                    date.format('YYYY-MM-DD'),
+                    ref,
+                ];
+            })) as [string[], IGunChainReference<any>[]];
+            expect(dates).toEqual([
+                '2019-12-31',
+                '2020-01-01',
+                '2020-01-02',
+            ]);
+            let values = await Promise.all(refs.map(r => r.then!()))
+            expect(values).toMatchObject([
+                {
+                    foo1: 'f1',
+                },
+                {
+                    bar1: 'b1',
+                    bar2: 'b2',
+                },
+                {
+                    gaz1: 'g1',
+                },
+            ]);
         });
     });
 
