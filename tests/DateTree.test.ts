@@ -6,6 +6,7 @@ import DateTree, { DateComponents } from "../src/DateTree";
 import moment from "moment";
 import _ from "lodash";
 import { v4 as uuidv4 } from 'uuid';
+import { iterateAll } from "../src/iterate";
 
 let gun: IGunChainReference;
 let runId: string;
@@ -431,6 +432,7 @@ describe('DateTree #', () => {
             '2010-12-05': 'b',
             '2010-11-30': 'a',
             '2010-10-20': '-',
+            '2009-12-31': 'x',
         }
 
         beforeEach(async () => {
@@ -442,6 +444,36 @@ describe('DateTree #', () => {
                 promises.push(ref.then!());
             });
             await Promise.all(promises);
+        });
+
+        it('should iterate over all data in ascending order by default', async () => {
+            let data = await iterateAll(tree.iterate());
+            let [dates, refs] = _.unzip(data.map(d => {
+                let [ref, date] = d;
+                return [
+                    date.format('YYYY-MM-DD'),
+                    ref,
+                ];
+            })) as [string[], IGunChainReference<string>[]];
+            expect(dates).toEqual([
+                '2009-12-31',
+                '2010-10-20',
+                '2010-11-30',
+                '2010-12-05',
+                '2010-12-07',
+                '2011-01-03',
+                '2011-01-04',
+            ]);
+            let values = await Promise.all(refs.map(r => r.then!()))
+            expect(values).toEqual([
+                'x',
+                '-',
+                'a',
+                'b',
+                'c',
+                'd',
+                '-',
+            ]);
         });
 
         it('should iterate over refs in date range without order', async () => {
@@ -458,6 +490,7 @@ describe('DateTree #', () => {
 
             // Check dates in ascending order
             let expectedData = _.omit(data, [
+                '2009-12-31',
                 '2010-10-20',
                 '2011-01-04',
             ]);
@@ -485,6 +518,7 @@ describe('DateTree #', () => {
 
             // Check dates in ascending order
             let expectedData = _.omit(data, [
+                '2009-12-31',
                 '2010-10-20',
                 '2011-01-04',
             ]);
