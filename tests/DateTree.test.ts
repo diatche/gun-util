@@ -6,6 +6,7 @@ import DateTree, { DateComponents } from "../src/DateTree";
 import moment from "moment";
 import _ from "lodash";
 import { v4 as uuidv4 } from 'uuid';
+import { iterateAll } from "../src/iterate";
 
 let gun: IGunChainReference;
 let runId: string;
@@ -63,6 +64,7 @@ describe('DateTree', () => {
 describe('DateTree #', () => {
     jest.setTimeout(20000);
 
+    let root: IGunChainReference; 
     let treeRoot: IGunChainReference; 
     let tree: DateTree<string>;
 
@@ -73,7 +75,8 @@ describe('DateTree #', () => {
     beforeEach(() => {
         // Use a clean node on every run
         runId = uuidv4();
-        treeRoot = gun.get(runId);
+        root = gun.get(runId);
+        treeRoot = gun.get(runId).get('tree');
         tree = new DateTree<string>(treeRoot, 'day');
     });
 
@@ -120,7 +123,7 @@ describe('DateTree #', () => {
 
         describe('no filter', () => {
 
-            it('should callback with all the data', done => {
+            it('should callback with primitive data', done => {
                 tree.get('2020-01-03').put('foo');
                 tree.get('2020-01-06').put('bar');
                 tree.get('2020-01-10').put('gaz');
@@ -141,7 +144,41 @@ describe('DateTree #', () => {
                 });
             });
 
+            it('should callback with object data', done => {
+                expect.assertions(1);
+                tree.get('2020-01-03').get('foo' as never).put({ label: 'foo1' } as never);
+                tree.get('2020-01-03').get('bar' as never).put({ label: 'bar1' } as never);
+                tree.get('2020-01-03').get('gaz' as never).put({ label: 'gaz1' } as never);
+
+                tree.on((data, date) => {
+                    let keys = Object.keys(_.omit(data as any, '_'));
+                    if (keys.length === 3) {
+                        expect(keys.sort()).toEqual(['bar', 'foo', 'gaz']);
+                        done();
+                    }
+                });
+            });
+
+            it('should callback with references', done => {
+                expect.assertions(1);
+                let foo = root.get('foo').put({ label: 'foo1' } as never);
+                let bar = root.get('bar').put({ label: 'bar1' } as never);
+                let gaz = root.get('gaz').put({ label: 'gaz1' } as never);
+                tree.get('2020-01-03').get('foo' as never).put(foo as never);
+                tree.get('2020-01-03').get('bar' as never).put(bar as never);
+                tree.get('2020-01-03').get('gaz' as never).put(gaz as never);
+
+                tree.on((data, date) => {
+                    let keys = Object.keys(_.omit(data as any, '_'));
+                    if (keys.length === 3) {
+                        expect(keys.sort()).toEqual(['bar', 'foo', 'gaz']);
+                        done();
+                    }
+                });
+            });
+
             it('should not callback after off', async (done) => {
+                expect.assertions(1);
                 let dateFormat = 'YYYY-MM-DD';
 
                 let cbTable: any = {};
@@ -174,6 +211,7 @@ describe('DateTree #', () => {
 
             it.skip('should callback with updates', async (done) => {
                 // TODO: enable when support added
+                expect.assertions(2);
                 let promises: any = [];
                 promises.push(tree.get('2020-01-03').put('foo').then!());
                 promises.push(tree.get('2020-01-06').put('bar').then!());
@@ -195,6 +233,7 @@ describe('DateTree #', () => {
         describe('with filter', () => {
 
             it('should callback with all the data with super set range', done => {
+                expect.assertions(1);
                 treeRoot = gun.get(runId);
                 tree = new DateTree<string>(treeRoot, 'millisecond');
 
@@ -207,17 +246,19 @@ describe('DateTree #', () => {
                 tree.on((data, date) => {
                     let key = date.utc().toISOString();
                     cbTable[key] = data;
-                    if (Object.keys(cbTable).length === 2) {
+                    if (done && Object.keys(cbTable).length === 2) {
                         expect(cbTable).toMatchObject({
                             [d1]: 'foo',
                             [d2]: 'bar',
                         });
                         done();
+                        (done as any) = undefined;
                     }
                 }, { gte: '2020-01-03' });
             });
 
             it('should not callback after off', async (done) => {
+                expect.assertions(1);
                 let dateFormat = 'YYYY-MM-DD';
 
                 let cbTable: any = {};
@@ -249,6 +290,7 @@ describe('DateTree #', () => {
             }, 40000);
 
             it('should callback with data in open set', done => {
+                expect.assertions(1);
                 tree.get('2020-01-03').put('foo');
                 tree.get('2020-02-04').put('bar1');
                 tree.get('2020-02-09').put('bar2');
@@ -270,6 +312,7 @@ describe('DateTree #', () => {
             });
 
             it('should callback with data in closed set', done => {
+                expect.assertions(1);
                 tree.get('2020-01-03').put('foo');
                 tree.get('2020-02-04').put('bar1');
                 tree.get('2020-02-09').put('bar2');
@@ -292,6 +335,7 @@ describe('DateTree #', () => {
 
             it.skip('should callback with updates', async (done) => {
                 // TODO: enable when support added
+                expect.assertions(2);
                 let promises: any = [];
                 promises.push(tree.get('2020-01-03').put('foo').then!());
                 promises.push(tree.get('2020-01-06').put('bar').then!());
@@ -378,7 +422,7 @@ describe('DateTree #', () => {
         }, 40000);
     });
 
-    describe('iterate', () => {
+    describe('iterate (primitive)', () => {
 
         // The data is in descending order intentionally
         let data: { [date: string]: string } = {
@@ -388,6 +432,7 @@ describe('DateTree #', () => {
             '2010-12-05': 'b',
             '2010-11-30': 'a',
             '2010-10-20': '-',
+            '2009-12-31': 'x',
         }
 
         beforeEach(async () => {
@@ -399,6 +444,36 @@ describe('DateTree #', () => {
                 promises.push(ref.then!());
             });
             await Promise.all(promises);
+        });
+
+        it('should iterate over all data in ascending order by default', async () => {
+            let data = await iterateAll(tree.iterate());
+            let [dates, refs] = _.unzip(data.map(d => {
+                let [ref, date] = d;
+                return [
+                    date.format('YYYY-MM-DD'),
+                    ref,
+                ];
+            })) as [string[], IGunChainReference<string>[]];
+            expect(dates).toEqual([
+                '2009-12-31',
+                '2010-10-20',
+                '2010-11-30',
+                '2010-12-05',
+                '2010-12-07',
+                '2011-01-03',
+                '2011-01-04',
+            ]);
+            let values = await Promise.all(refs.map(r => r.then!()))
+            expect(values).toEqual([
+                'x',
+                '-',
+                'a',
+                'b',
+                'c',
+                'd',
+                '-',
+            ]);
         });
 
         it('should iterate over refs in date range without order', async () => {
@@ -415,6 +490,7 @@ describe('DateTree #', () => {
 
             // Check dates in ascending order
             let expectedData = _.omit(data, [
+                '2009-12-31',
                 '2010-10-20',
                 '2011-01-04',
             ]);
@@ -442,6 +518,7 @@ describe('DateTree #', () => {
 
             // Check dates in ascending order
             let expectedData = _.omit(data, [
+                '2009-12-31',
                 '2010-10-20',
                 '2011-01-04',
             ]);
@@ -452,6 +529,62 @@ describe('DateTree #', () => {
                 let value = await ref.then!();
                 expect(value).toBe(data[date]);
             }
+        });
+    });
+
+    describe('iterate (objects)', () => {
+
+        // The data is in descending order intentionally
+        let data: { [date: string]: any } = {
+            '2019-12-31': {
+                foo1: 'f1',
+            },
+            '2020-01-01': {
+                bar1: 'b1',
+                bar2: 'b2',
+            },
+            '2020-01-02': {
+                gaz1: 'g1',
+            },
+        }
+
+        beforeEach(async () => {
+            // Add data to graph
+            let promises: any[] = [];
+            _.forIn(data, (value, dateStr) => {
+                let ref = tree.get(dateStr).put(value as never);
+                promises.push(ref.then!());
+            });
+            await Promise.all(promises);
+        });
+
+        it('should iterate over all data in ascending order by default', async () => {
+            let data = await iterateAll(tree.iterate());
+            let [dates, refs] = _.unzip(data.map(d => {
+                let [ref, date] = d;
+                return [
+                    date.format('YYYY-MM-DD'),
+                    ref,
+                ];
+            })) as [string[], IGunChainReference<any>[]];
+            expect(dates).toEqual([
+                '2019-12-31',
+                '2020-01-01',
+                '2020-01-02',
+            ]);
+            let values = await Promise.all(refs.map(r => r.then!()))
+            expect(values).toMatchObject([
+                {
+                    foo1: 'f1',
+                },
+                {
+                    bar1: 'b1',
+                    bar2: 'b2',
+                },
+                {
+                    gaz1: 'g1',
+                },
+            ]);
         });
     });
 
