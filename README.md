@@ -252,7 +252,7 @@ Have a look at the [examples folder](examples/).
 
 #### Notes
 
-- It's been observed that multiple `gun.on('auth', cb)` listeners don't work. Since the `Auth` creates an `auth` listener, it relies on the user to not create this themselves. A way of managing this better is in the works.
+- It's been observed that multiple `gun.on('auth', cb)`. If you use your own `gun.on('auth', cb)` listener, call `Auth#didAuth()` inside of it.
 
 ### Other Methods
 

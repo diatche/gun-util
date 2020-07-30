@@ -164,6 +164,17 @@ export default class Auth {
     }
 
     /**
+     * If you use your own `gun.on('auth', cb)` listener,
+     * call this method inside it.
+     * 
+     * Why? It's been observed that multiple `gun.on('auth', cb)`
+     * listeners don't work.
+     */
+    didAuth() {
+        this._endOnAuth();
+    }
+
+    /**
      * Wait for all user operations to finish.
      */
     async join(options: AuthBasicOptions = {}): Promise<void> {
@@ -403,11 +414,11 @@ export default class Auth {
 
     private _endOnAuth(pub?: string) {
         pub = pub || this.pub();
-        if (pub && this._onAuthResolver) {
+        if (pub) {
             let resolve = this._onAuthResolver;
             this._onAuthResolver = undefined;
             this._onAuth$ = undefined;
-            resolve(pub);
+            resolve?.(pub);
             if (this.delegate?.storePair) {
                 let pair = this.pair();
                 if (pair) {

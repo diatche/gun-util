@@ -70,7 +70,8 @@ describe('Auth', () => {
             creds = newCreds();
         });
 
-        afterEach(() => {
+        afterEach(async () => {
+            await auth.join();
             auth.logout();
         });
 
