@@ -13,6 +13,21 @@ let runId: string;
 
 describe('DateTree', () => {
 
+    describe('parseDate', () => {
+
+        it('should parse a moment with time zone', () => {
+            let date = moment('2020-06-03T15:01:02.003+10:00');
+            expect(DateTree.parseDate(date).toISOString()).toEqual('2020-06-03T05:01:02.003Z');
+        });
+
+        it('should parse a partial string in the current time zone', () => {
+            let date = moment('2020-06-03');
+            let dateStr = date.format('YYYY-MM-DD');
+            let utcStr = date.utc().toISOString();
+            expect(DateTree.parseDate(dateStr).toISOString()).toEqual(utcStr);
+        });
+    });
+
     describe('getDateComponents', () => {
 
         it('should return date components', () => {
@@ -26,6 +41,20 @@ describe('DateTree', () => {
                 'minute': 24,
                 'second': 2,
                 'millisecond': 456,
+            } as DateComponents);
+        });
+
+        it('should shift date components by time zone', () => {
+            let date = moment('1995-12-17T15:01:02.003+10:00');
+            let comps = DateTree.getDateComponents(date, 'millisecond');
+            expect(comps).toMatchObject({
+                'year': 1995,
+                'month': 12,
+                'day': 17,
+                'hour': 5,
+                'minute': 1,
+                'second': 2,
+                'millisecond': 3,
             } as DateComponents);
         });
     });
@@ -64,8 +93,8 @@ describe('DateTree', () => {
 describe('DateTree #', () => {
     jest.setTimeout(20000);
 
-    let root: IGunChainReference; 
-    let treeRoot: IGunChainReference; 
+    let root: IGunChainReference;
+    let treeRoot: IGunChainReference;
     let tree: DateTree<string>;
 
     beforeAll(async () => {
@@ -96,9 +125,15 @@ describe('DateTree #', () => {
         });
 
         it('should return the correct node with an ISO date string', async () => {
-            tree.get('2020-05-06').put('test3' as never);
+            tree.get('2020-05-06T00:00:00Z').put('test3' as never);
             let val1 = await treeRoot.get('2020').get('05').get('06').then!();
             expect(val1).toBe('test3');
+        });
+
+        it('should return the correct node with a time zone', async () => {
+            tree.get('2020-05-08T00:00:00+12:00').put('test4' as never);
+            let val1 = await treeRoot.get('2020').get('05').get('07').then!();
+            expect(val1).toBe('test4');
         });
     });
 
@@ -124,9 +159,9 @@ describe('DateTree #', () => {
         describe('no filter', () => {
 
             it('should callback with primitive data', done => {
-                tree.get('2020-01-03').put('foo');
-                tree.get('2020-01-06').put('bar');
-                tree.get('2020-01-10').put('gaz');
+                tree.get(moment.utc('2020-01-03')).put('foo');
+                tree.get(moment.utc('2020-01-06')).put('bar');
+                tree.get(moment.utc('2020-01-10')).put('gaz');
 
                 let dateFormat = 'YYYY-MM-DD';
                 let cbTable: any = {};
@@ -146,9 +181,9 @@ describe('DateTree #', () => {
 
             it('should callback with object data', done => {
                 expect.assertions(1);
-                tree.get('2020-01-03').get('foo' as never).put({ label: 'foo1' } as never);
-                tree.get('2020-01-03').get('bar' as never).put({ label: 'bar1' } as never);
-                tree.get('2020-01-03').get('gaz' as never).put({ label: 'gaz1' } as never);
+                tree.get(moment.utc('2020-01-03')).get('foo' as never).put({ label: 'foo1' } as never);
+                tree.get(moment.utc('2020-01-03')).get('bar' as never).put({ label: 'bar1' } as never);
+                tree.get(moment.utc('2020-01-03')).get('gaz' as never).put({ label: 'gaz1' } as never);
 
                 tree.on((data, date) => {
                     let keys = Object.keys(_.omit(data as any, '_'));
@@ -164,9 +199,9 @@ describe('DateTree #', () => {
                 let foo = root.get('foo').put({ label: 'foo1' } as never);
                 let bar = root.get('bar').put({ label: 'bar1' } as never);
                 let gaz = root.get('gaz').put({ label: 'gaz1' } as never);
-                tree.get('2020-01-03').get('foo' as never).put(foo as never);
-                tree.get('2020-01-03').get('bar' as never).put(bar as never);
-                tree.get('2020-01-03').get('gaz' as never).put(gaz as never);
+                tree.get(moment.utc('2020-01-03')).get('foo' as never).put(foo as never);
+                tree.get(moment.utc('2020-01-03')).get('bar' as never).put(bar as never);
+                tree.get(moment.utc('2020-01-03')).get('gaz' as never).put(gaz as never);
 
                 tree.on((data, date) => {
                     let keys = Object.keys(_.omit(data as any, '_'));
@@ -202,19 +237,19 @@ describe('DateTree #', () => {
                     }
                 });
 
-                tree.get('2020-01-03').put('foo');
+                tree.get(moment.utc('2020-01-03')).put('foo');
                 await delay(100);
-                tree.get('2020-01-06').put('bar');
+                tree.get(moment.utc('2020-01-06')).put('bar');
                 await delay(100);
-                tree.get('2020-01-10').put('gaz');
+                tree.get(moment.utc('2020-01-10')).put('gaz');
             }, 40000);
 
             it.skip('should callback with updates', async (done) => {
                 // TODO: enable when support added
                 expect.assertions(2);
                 let promises: any = [];
-                promises.push(tree.get('2020-01-03').put('foo').then!());
-                promises.push(tree.get('2020-01-06').put('bar').then!());
+                promises.push(tree.get(moment.utc('2020-01-03')).put('foo').then!());
+                promises.push(tree.get(moment.utc('2020-01-06')).put('bar').then!());
                 await Promise.all(promises);
                 await delay(1000);
 
@@ -226,7 +261,7 @@ describe('DateTree #', () => {
                     done();
                 }, { updates: true } as any);
 
-                tree.get('2020-01-10').put('gaz');
+                tree.get(moment.utc('2020-01-10')).put('gaz');
             });
         });
 
@@ -254,7 +289,7 @@ describe('DateTree #', () => {
                         done();
                         (done as any) = undefined;
                     }
-                }, { gte: '2020-01-03' });
+                }, { gte: moment.utc('2020-01-03') });
             });
 
             it('should not callback after off', async (done) => {
@@ -268,7 +303,7 @@ describe('DateTree #', () => {
                     if (key === '2020-01-03') {
                         sub.off();
                     }
-                }, { gte: '2020-01-03' });
+                }, { gte: moment.utc('2020-01-03') });
 
                 let allCbTable: any = {};
                 tree.on((data, date) => {
@@ -280,21 +315,21 @@ describe('DateTree #', () => {
                         });
                         done();
                     }
-                }, { gte: '2020-01-03' });
+                }, { gte: moment.utc('2020-01-03') });
 
-                tree.get('2020-01-03').put('foo');
+                tree.get(moment.utc('2020-01-03')).put('foo');
                 await delay(100);
-                tree.get('2020-01-06').put('bar');
+                tree.get(moment.utc('2020-01-06')).put('bar');
                 await delay(100);
-                tree.get('2020-01-10').put('gaz');
+                tree.get(moment.utc('2020-01-10')).put('gaz');
             }, 40000);
 
             it('should callback with data in open set', done => {
                 expect.assertions(1);
-                tree.get('2020-01-03').put('foo');
-                tree.get('2020-02-04').put('bar1');
-                tree.get('2020-02-09').put('bar2');
-                tree.get('2020-03-10').put('gaz');
+                tree.get(moment.utc('2020-01-03')).put('foo');
+                tree.get(moment.utc('2020-02-04')).put('bar1');
+                tree.get(moment.utc('2020-02-09')).put('bar2');
+                tree.get(moment.utc('2020-03-10')).put('gaz');
 
                 let dateFormat = 'YYYY-MM-DD';
                 let cbTable: any = {};
@@ -308,15 +343,73 @@ describe('DateTree #', () => {
                         });
                         done();
                     }
-                }, { gt: '2020-01-03', lt: '2020-03-10' });
+                }, { gt: moment.utc('2020-01-03'), lt: moment.utc('2020-03-10') });
             });
+
+            it('should callback with data in closed set with extra precision', done => {
+                expect.assertions(1);
+                tree.get(moment.utc('2020-03-09')).put('gaz1');
+                tree.get(moment.utc('2020-03-10')).put('gaz2');
+                tree.get(moment.utc('2020-01-02')).put('foo1');
+                tree.get(moment.utc('2020-01-03')).put('foo2');
+                tree.get(moment.utc('2020-02-04')).put('bar1');
+                tree.get(moment.utc('2020-02-09')).put('bar2');
+
+                let dateFormat = 'YYYY-MM-DD';
+                let cbTable: any = {};
+                tree.on((data, date) => {
+                    let key = date.utc().format(dateFormat);
+                    cbTable[key] = data;
+                    if (done && Object.keys(cbTable).length === 3) {
+                        expect(cbTable).toMatchObject({
+                            '2020-01-03': 'foo2',
+                            '2020-02-04': 'bar1',
+                            '2020-02-09': 'bar2',
+                        });
+                        done();
+                        (done as any) = undefined;
+                    }
+                }, {
+                    gte: moment.utc('2020-01-03 01:00'),
+                    lte: moment.utc('2020-02-09 23:00')
+                });
+            }, 40000);
+
+            it('should callback with data in open set with time zone', done => {
+                expect.assertions(1);
+                tree.get('2020-01-03 00:00:00+10:00').put('foo1');
+                tree.get('2020-03-10 00:00:00+10:00').put('gaz2');
+                tree.get('2020-01-04 00:00:00+10:00').put('foo2');
+                tree.get('2020-02-04 00:00:00+10:00').put('bar1');
+                tree.get('2020-02-09 00:00:00+10:00').put('bar2');
+                tree.get('2020-03-09 00:00:00+10:00').put('gaz1');
+
+                let dateFormat = 'YYYY-MM-DD';
+                let cbTable: any = {};
+                tree.on((data, date) => {
+                    let key = date.utc().format(dateFormat);
+                    cbTable[key] = data;
+                    if (Object.keys(cbTable).length === 4) {
+                        expect(cbTable).toMatchObject({
+                            '2020-01-03': 'foo2',
+                            '2020-02-03': 'bar1',
+                            '2020-02-08': 'bar2',
+                            '2020-03-08': 'gaz1',
+                        });
+                        done();
+                    }
+                }, {
+                    gt: '2020-01-03 00:00:00+10:00',
+                    lt: '2020-03-10 00:00:00+10:00'
+                });
+            }, 40000);
 
             it('should callback with data in closed set', done => {
                 expect.assertions(1);
-                tree.get('2020-01-03').put('foo');
-                tree.get('2020-02-04').put('bar1');
-                tree.get('2020-02-09').put('bar2');
-                tree.get('2020-03-10').put('gaz');
+                tree.get(moment.utc('2020-01-03')).put('foo');
+                tree.get(moment.utc('2020-02-04')).put('bar1');
+                tree.get(moment.utc('2020-02-09')).put('bar2');
+                tree.get(moment.utc('2020-03-10')).put('gaz');
 
                 let dateFormat = 'YYYY-MM-DD';
                 let cbTable: any = {};
@@ -330,15 +423,15 @@ describe('DateTree #', () => {
                         });
                         done();
                     }
-                }, { gte: '2020-02-04', lte: '2020-02-09' });
+                }, { gte: moment.utc('2020-02-04'), lte: moment.utc('2020-02-09') });
             });
 
             it.skip('should callback with updates', async (done) => {
                 // TODO: enable when support added
                 expect.assertions(2);
                 let promises: any = [];
-                promises.push(tree.get('2020-01-03').put('foo').then!());
-                promises.push(tree.get('2020-01-06').put('bar').then!());
+                promises.push(tree.get(moment.utc('2020-01-03')).put('foo').then!());
+                promises.push(tree.get(moment.utc('2020-01-06')).put('bar').then!());
                 await Promise.all(promises);
 
                 let dateFormat = 'YYYY-MM-DD';
@@ -347,9 +440,9 @@ describe('DateTree #', () => {
                     expect(data).toBe('gaz');
                     expect(key).toBe('2020-01-10');
                     done();
-                }, { gte: '2020-01-03', updates: true } as any);
+                }, { gte: moment.utc('2020-01-03'), updates: true } as any);
 
-                tree.get('2020-01-10').put('gaz');
+                tree.get(moment.utc('2020-01-10')).put('gaz');
             });
         });
     });
@@ -408,7 +501,7 @@ describe('DateTree #', () => {
                     if (date === '2020-01-06') {
                         sub.off();
                     }
-                    tree.get(date).put('a');
+                    tree.get(moment.utc(date)).put('a');
                 } else {
                     expect(Array.from(keys).sort()).toEqual([
                         '2020-01-05',
@@ -451,7 +544,7 @@ describe('DateTree #', () => {
             let [dates, refs] = _.unzip(data.map(d => {
                 let [ref, date] = d;
                 return [
-                    date.format('YYYY-MM-DD'),
+                    date.utc().format('YYYY-MM-DD'),
                     ref,
                 ];
             })) as [string[], IGunChainReference<string>[]];
@@ -485,7 +578,7 @@ describe('DateTree #', () => {
             let dates: any[] = [];
             for await (let [ref, date] of it) {
                 refs.push(ref);
-                dates.push(date.format('YYYY-MM-DD'));
+                dates.push(date.utc().format('YYYY-MM-DD'));
             }
 
             // Check dates in ascending order
@@ -513,7 +606,7 @@ describe('DateTree #', () => {
             let dates: any[] = [];
             for await (let [ref, date] of it) {
                 refs.push(ref);
-                dates.push(date.format('YYYY-MM-DD'));
+                dates.push(date.utc().format('YYYY-MM-DD'));
             }
 
             // Check dates in ascending order
@@ -552,7 +645,7 @@ describe('DateTree #', () => {
             // Add data to graph
             let promises: any[] = [];
             _.forIn(data, (value, dateStr) => {
-                let ref = tree.get(dateStr).put(value as never);
+                let ref = tree.get(moment.utc(dateStr)).put(value as never);
                 promises.push(ref.then!());
             });
             await Promise.all(promises);
@@ -563,7 +656,7 @@ describe('DateTree #', () => {
             let [dates, refs] = _.unzip(data.map(d => {
                 let [ref, date] = d;
                 return [
-                    date.format('YYYY-MM-DD'),
+                    date.utc().format('YYYY-MM-DD'),
                     ref,
                 ];
             })) as [string[], IGunChainReference<any>[]];
@@ -733,7 +826,7 @@ describe('DateTree #', () => {
         beforeEach(async () => {
             // Add data to graph
             await Promise.all([
-                tree.get('2012-11-30').put('a' as never).then!(),
+                tree.get(moment.utc('2012-11-30')).put('a' as never).then!(),
                 tree.get(now).put('b' as never).then!()
             ]);
         });
