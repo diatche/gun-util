@@ -37,7 +37,7 @@ describe('wait with Gun', () => {
 
     beforeEach(() => {
         // Use a clean node on every run
-        runId = uuidv4();
+        runId = 'test-' + uuidv4();
         runRef = gun.get(runId);
     });
 

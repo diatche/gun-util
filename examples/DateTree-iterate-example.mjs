@@ -3,7 +3,7 @@ import moment from 'moment';
 import { DateTree } from '../dist/index.mjs';
 
 let gun = Gun();
-let treeRoot = gun.get('tree-it');
+let treeRoot = gun.get('test-tree-it');
 let tree = new DateTree(treeRoot, 'minute');
 
 tree.get('1995-01-21 14:02').put({ event: 'good times' });

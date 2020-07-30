@@ -74,7 +74,7 @@ describe('DateTree #', () => {
 
     beforeEach(() => {
         // Use a clean node on every run
-        runId = uuidv4();
+        runId = 'test-' + uuidv4();
         root = gun.get(runId);
         treeRoot = gun.get(runId).get('tree');
         tree = new DateTree<string>(treeRoot, 'day');

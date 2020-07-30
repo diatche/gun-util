@@ -42,7 +42,7 @@ describe('iterate *', () => {
 
     beforeEach(() => {
         // Use a clean node on every run
-        runId = uuidv4();
+        runId = 'test-' + uuidv4();
         runRef = gun.get(runId) as any;
     });
 
@@ -61,7 +61,7 @@ describe('iterate *', () => {
 
         beforeAll(async () => {
             // Use a clean node on every run
-            scanRef = gun.get(uuidv4());
+            scanRef = gun.get('test-' + uuidv4());
             let promises: any[] = [];
             _.forIn(data, (v, k) => {
                 let promise = scanRef.get('strings').get(k).put(v).then!();

@@ -3,7 +3,7 @@ const { DateTree } = require('../dist');
 const moment = require('moment');
 
 let gun = Gun();
-let treeRoot = gun.get('tree-on-' + moment().toISOString());
+let treeRoot = gun.get('test-tree-on-' + moment().toISOString());
 let tree = new DateTree(treeRoot, 'millisecond');
 let now = moment();
 

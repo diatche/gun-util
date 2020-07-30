@@ -2,7 +2,7 @@ import Gun from 'gun';
 import { iterateItems } from '../dist/index.mjs';
 
 let gun = Gun();
-let list = gun.get('list');
+let list = gun.get('test-list');
 
 list.put({ a: 'foo' });
 list.put({ b: 'bar' });
