@@ -93,8 +93,8 @@ describe('DateTree', () => {
 describe('DateTree #', () => {
     jest.setTimeout(20000);
 
-    let root: IGunChainReference; 
-    let treeRoot: IGunChainReference; 
+    let root: IGunChainReference;
+    let treeRoot: IGunChainReference;
     let tree: DateTree<string>;
 
     beforeAll(async () => {
@@ -348,35 +348,41 @@ describe('DateTree #', () => {
 
             it('should callback with data in closed set with extra precision', done => {
                 expect.assertions(1);
-                tree.get(moment.utc('2020-01-03')).put('foo');
+                tree.get(moment.utc('2020-03-09')).put('gaz1');
+                tree.get(moment.utc('2020-03-10')).put('gaz2');
+                tree.get(moment.utc('2020-01-02')).put('foo1');
+                tree.get(moment.utc('2020-01-03')).put('foo2');
                 tree.get(moment.utc('2020-02-04')).put('bar1');
                 tree.get(moment.utc('2020-02-09')).put('bar2');
-                tree.get(moment.utc('2020-03-10')).put('gaz');
 
                 let dateFormat = 'YYYY-MM-DD';
                 let cbTable: any = {};
                 tree.on((data, date) => {
                     let key = date.utc().format(dateFormat);
                     cbTable[key] = data;
-                    if (Object.keys(cbTable).length === 2) {
+                    if (done && Object.keys(cbTable).length === 3) {
                         expect(cbTable).toMatchObject({
+                            '2020-01-03': 'foo2',
                             '2020-02-04': 'bar1',
                             '2020-02-09': 'bar2',
-                            '2020-02-10': 'gaz',
                         });
                         done();
+                        (done as any) = undefined;
                     }
-                }, { gte: moment.utc('2020-01-03 01:00'), lte: moment.utc('2020-03-10 01:00') });
-            });
+                }, {
+                    gte: moment.utc('2020-01-03 01:00'),
+                    lte: moment.utc('2020-02-09 23:00')
+                });
+            }, 40000);
 
             it('should callback with data in open set with time zone', done => {
                 expect.assertions(1);
                 tree.get('2020-01-03 00:00:00+10:00').put('foo1');
+                tree.get('2020-03-10 00:00:00+10:00').put('gaz2');
                 tree.get('2020-01-04 00:00:00+10:00').put('foo2');
                 tree.get('2020-02-04 00:00:00+10:00').put('bar1');
                 tree.get('2020-02-09 00:00:00+10:00').put('bar2');
                 tree.get('2020-03-09 00:00:00+10:00').put('gaz1');
-                tree.get('2020-03-10 00:00:00+10:00').put('gaz2');
 
                 let dateFormat = 'YYYY-MM-DD';
                 let cbTable: any = {};
@@ -392,8 +398,11 @@ describe('DateTree #', () => {
                         });
                         done();
                     }
-                }, { gt: '2020-01-03 00:00:00+10:00', lt: '2020-03-10 00:00:00+10:00' });
-            });
+                }, {
+                    gt: '2020-01-03 00:00:00+10:00',
+                    lt: '2020-03-10 00:00:00+10:00'
+                });
+            }, 40000);
 
             it('should callback with data in closed set', done => {
                 expect.assertions(1);

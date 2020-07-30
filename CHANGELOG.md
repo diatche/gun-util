@@ -8,6 +8,10 @@ Changes on `develop` will be listed here.
 
 - Made `DateTree.parseDate()` public.
 
+### Bug Fixes
+
+- Fixed using `DateTree` with non UTC dates.
+
 ### Breaking Changes
 
 - Removed redundant method `DateTree.iterateDates()`.

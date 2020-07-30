@@ -112,7 +112,7 @@ export default class DateTree<T = any> {
         // TODO: add updates support
         let range = mapValueRange(
             rangeWithFilter(opts),
-            DateTree.parseDate
+            x => DateTree.parseDate(x, this.resolution),
         );
         let { start, end } = range;
 
@@ -437,7 +437,7 @@ export default class DateTree<T = any> {
      */
     async next(date?: DateParsable): Promise<[IGunChainReference<T> | undefined, Moment | undefined]> {
         let it = this.iterate({
-            gt: date && DateTree.parseDate(date) || undefined,
+            gt: date && DateTree.parseDate(date, this.resolution) || undefined,
             order: 1,
         });
         for await (let [ref, refDate] of it) {
@@ -462,7 +462,7 @@ export default class DateTree<T = any> {
      */
     async previous(date?: Moment): Promise<[IGunChainReference<T> | undefined, Moment | undefined]> {
         let it = this.iterate({
-            lt: date && DateTree.parseDate(date) || undefined,
+            lt: date && DateTree.parseDate(date, this.resolution) || undefined,
             order: -1,
         });
         for await (let [ref, refDate] of it) {
@@ -487,7 +487,7 @@ export default class DateTree<T = any> {
     async * iterate(opts: DateIterateOptions = {}): AsyncGenerator<[IGunChainReference<T>, Moment]> {
         let range = mapValueRange(
             rangeWithFilter(opts),
-            DateTree.parseDate
+            x => DateTree.parseDate(x, this.resolution),
         );
         let { start, end } = range;
         let { order } = opts;
@@ -795,11 +795,15 @@ export default class DateTree<T = any> {
      * current time zone and converts it into UTC time.
      * @param date 
      */
-    static parseDate(date: DateParsable): Moment {
+    static parseDate(date: DateParsable, resolution?: DateUnit): Moment {
         if (!date || (typeof date === 'number' && (isNaN(date) || !isFinite(date)))) {
             throw new Error('Invalid date');
         }
-        return moment(date).utc();
+        let m = moment(date).utc();
+        if (resolution) {
+            m = m.startOf(resolution);
+        }
+        return m;
     }
 }
 
