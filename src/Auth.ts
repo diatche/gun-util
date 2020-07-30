@@ -110,7 +110,7 @@ export default class Auth {
      */
     async login(creds: UserCredentials | IGunCryptoKeyPair): Promise<string> {
         this.logout();
-        return this._authBlock(async () => {
+        return this._beginAuthBlock(async () => {
             return await this._login(creds);
         });
     }
@@ -121,7 +121,7 @@ export default class Auth {
      */
     async create(creds: UserCredentials): Promise<string> {
         this.logout();
-        return this._authBlock(async () => {
+        return this._beginAuthBlock(async () => {
             return await this._create(creds);
         });
     }
@@ -130,7 +130,7 @@ export default class Auth {
      * Login a previously saved user.
      */
     async recall(opts: AuthRecallOptions = {}): Promise<string | undefined> {
-        return this._authBlock(async () => {
+        return this._beginAuthBlock(async () => {
             if (this.delegate?.recallPair) {
                 let pair = await this.delegate!.recallPair(this, opts);
                 if (pair) {
@@ -166,13 +166,13 @@ export default class Auth {
         creds: UserCredentials & { newPass: string }
     ): Promise<string> {
         this.logout();
-        return this._authBlock(async () => {
+        return this._beginAuthBlock(async () => {
             return await this._create(creds);
         });
     }
 
     async delete({ alias, pass }: UserCredentials): Promise<void> {
-        return this._authBlock(async () => {
+        return this._beginAuthBlock(async () => {
             return new Promise((resolve, reject) => {
                 this.gun.user().delete(alias, pass, ack => {
                     if (!this.pub()) {
@@ -392,7 +392,7 @@ export default class Auth {
         return pub;
     }
 
-    private async _authBlock<T>(block: () => Promise<T>): Promise<T> {
+    private async _beginAuthBlock<T>(block: () => Promise<T>): Promise<T> {
         if (this._authOp) {
             throw new AuthError('Already performing a user operation');
         }
