@@ -4,6 +4,8 @@
 
 Changes on `develop` will be listed here.
 
+## 0.0.9
+
 ### Features
 
 - Made `DateTree.parseDate()` public.

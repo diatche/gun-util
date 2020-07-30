@@ -62,7 +62,9 @@ Easily find a reference to a node using the date.
 tree.get('2020-08-23').put({ event: 'of a lifetime' });
 // The above is equivalent to:
 treeRoot.get('2020').get('08').get('23').put({ event: 'of a lifetime' });
+// This is assuming that UTC is the default time zone. See notes below.
 ```
+Jump to [Notes](#Notes).
 
 **Subscribing to data:**
 
@@ -186,9 +188,16 @@ and `tree.iterate()` to get the latest data.
 When the date gets too far away, for example after `2020-01-01`,
 we can call `unsub()` and resubscribe to a later date.
 
-**Other examples**
+#### Other examples
 
 Have a look at the [examples folder](examples/).
+
+#### Notes
+
+- The dates are stored in UTC time zone, but partial strings (without a time zone) are parsed in the local time zone (to be consistent with the convention). Avoid using partial string dates if this does not suit your use case.
+- Noting the above, consider the scenario where the local time zone offset is +12:00:
+   - If you use `tree.get('2020-08-23')`, you will in fact reference the previous date as the partial string parses into `2020-08-22T12:00:00.000Z`.
+   - Filtering with `{ gte: '2009-02-01' }` will match dates after and including `2009-01-31`.
 
 ### Encryption
 
