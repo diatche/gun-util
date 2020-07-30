@@ -194,10 +194,10 @@ Have a look at the [examples folder](examples/).
 
 #### Notes
 
-- The dates are stored in UTC time zone, but partial strings (without a time zone) are parsed in the local time zone (to be consistent with the convention). Avoid using partial string dates if this does not suit your use case.
-- Noting the above, consider the scenario where the local time zone offset is +12:00:
-   - If you use `tree.get('2020-08-23')`, you will in fact reference the previous date as the partial string parses into `2020-08-22T12:00:00.000Z`.
-   - Filtering with `{ gte: '2009-02-01' }` will match dates after and including `2009-01-31`.
+- The dates are stored in UTC time zone, but partial strings (without a time zone) are parsed in the local time zone (to be consistent with the convention). Avoid using partial string dates on trees with a resolution of `day` if this does not suit your use case. Using a resolution of `hour` solves most of the issues, but there are acouple of 30-minute time zones, so if you need perfection, then a resolution of `minute` is the way to go.
+- Noting the above, consider the scenario where we have a date tree with resolution `day` and the local time zone offset is +12:00:
+   - If you use `tree.get('2020-08-23')`, you will in fact reference the previous date as the partial string parses into `2020-08-22T12:00:00.000Z`. Use `tree.get('2020-08-23T00:00:00Z')` or `tree.get(moment.utc('2020-08-23'))` to avoid this.
+   - Filtering with `{ gte: '2009-02-01' }` will match dates after and including `2009-01-31`. Use `{ gte: '2009-02-01T00:00:00Z' }` or `{ gte: moment.utc('2009-02-01') }` to avoid this.
 
 ### Encryption
 
@@ -245,6 +245,10 @@ Have a look at the [examples folder](examples/).
 Convenience methods for creating an authenticating a Gun user.
 
 Have a look at the [examples folder](examples/).
+
+#### Notes
+
+- It's been observed that multiple `gun.on('auth', cb)` listeners don't work. Since the `Auth` creates an `auth` listener, it relies on the user to not create this himself. A way of managing this better is in the works.
 
 ### Other Methods
 
