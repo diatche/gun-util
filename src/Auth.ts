@@ -177,7 +177,7 @@ export default class Auth {
         })();
 
         if (timeout) {
-            await timeoutAfter(joins, timeout, new TimeoutError('The operation timed out'))
+            await timeoutAfter(joins, timeout)
                 .catch(err => {
                     stop = true;
                     throw err;

@@ -8,6 +8,7 @@ Changes on `develop` will be listed here.
 
 - When attempting to start another login while another is in progress, `Auth` throws a `MultipleAuthError` instead of `AuthError`.
 - You can wait for a user operation to finish using `Auth.join()`.
+- Added `errorAfter()` and `timeoutAfter()` utility methods.
 
 ## 0.0.9
 

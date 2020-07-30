@@ -1,4 +1,5 @@
 import { IGunChainReference } from "gun/types/chain";
+import { TimeoutError } from "./errors";
 
 /**
  * Subscribes to a Gun node reference and return
@@ -51,13 +52,15 @@ export async function errorAfter<T = void>(ms: number, error: Error): Promise<T>
 }
 
 /**
- * Throw error after `ms` interval.
+ * If the promise does not resolve (or error) within `ms` interval,
+ * throws a the specified `error`. If no error is specified, uses
+ * a `TimeoutError` instead.
  * @param ms 
  * @param error 
  */
-export async function timeoutAfter<T = any>(promise: Promise<T>, ms: number, error: Error): Promise<T> {
+export async function timeoutAfter<T = any>(promise: Promise<T>, ms: number, error?: Error): Promise<T> {
     return Promise.race([
         promise,
-        errorAfter<T>(ms, error),
+        errorAfter<T>(ms, error || new TimeoutError('The opration timed out')),
     ]);
 }

@@ -260,3 +260,7 @@ Have a look at the [examples folder](examples/).
   - Returns a promise, which resolves when data arrives at a node reference.
 - `delay(ms, passthrough?)`
   - Promisified `setTimeout()`.
+- `errorAfter(ms, error)`
+  - Throw error after `ms` interval.
+- `timeoutAfter(promise, ms, error?)`
+  - If the promise does not resolve (or error) within `ms` interval, throws a the specified `error`. If no error is specified, uses a `TimeoutError` instead.
