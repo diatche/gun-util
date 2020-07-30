@@ -11,6 +11,9 @@ export class TimeoutError extends NetworkError {}
 /** Base error related to authentication. */
 export class AuthError extends GunError {}
 
+/** Attempting to start another login while another is in progress. */
+export class MultipleAuthError extends AuthError {}
+
 /** Login error. */
 export class InvalidCredentials extends AuthError {}
 

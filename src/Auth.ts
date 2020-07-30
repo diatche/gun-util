@@ -1,7 +1,8 @@
 import { IGunChainReference } from "gun/types/chain";
-import { InvalidCredentials, GunError, AuthError, UserExists, TimeoutError } from "./errors";
+import { InvalidCredentials, GunError, AuthError, UserExists, TimeoutError, MultipleAuthError } from "./errors";
 import { IGunCryptoKeyPair } from "gun/types/types";
 import { isGunAuthPairSupported, isPlatformWeb, isGunInstance } from "./support";
+import { timeoutAfter } from "./wait";
 
 const LOGIN_CHECK_DELAY = 500;
 
@@ -10,7 +11,7 @@ export interface UserCredentials {
     pass: string
 }
 
-export interface AuthRecallOptions {
+export interface AuthBasicOptions {
     /** Timeout `ms` interval. */
     timeout?: number;
 }
@@ -25,7 +26,7 @@ export interface AuthDelegate {
      * If a timeout option is specified, it's up to the delegate to
      * enforce this.
      **/
-    recallPair?: (auth: Auth, opts: AuthRecallOptions) => Promise<IGunCryptoKeyPair | undefined> | IGunCryptoKeyPair | undefined;
+    recallPair?: (auth: Auth, opts: AuthBasicOptions) => Promise<IGunCryptoKeyPair | undefined> | IGunCryptoKeyPair | undefined;
 }
 
 /**
@@ -129,7 +130,7 @@ export default class Auth {
     /**
      * Login a previously saved user.
      */
-    async recall(opts: AuthRecallOptions = {}): Promise<string | undefined> {
+    async recall(opts: AuthBasicOptions = {}): Promise<string | undefined> {
         return this._beginAuthBlock(async () => {
             if (this.delegate?.recallPair) {
                 let pair = await this.delegate!.recallPair(this, opts);
@@ -162,6 +163,30 @@ export default class Auth {
         return this._onAuth$;
     }
 
+    /**
+     * Wait for all user operations to finish.
+     */
+    async join(options: AuthBasicOptions = {}): Promise<void> {
+        let { timeout = 0 } = options;
+        let stop = false;
+
+        let joins = (async () => {
+            while (!stop && this._authBlock) {
+                await this._authBlock;
+            }
+        })();
+
+        if (timeout) {
+            await timeoutAfter(joins, timeout, new TimeoutError('The operation timed out'))
+                .catch(err => {
+                    stop = true;
+                    throw err;
+                });
+        } else {
+            await joins;
+        }
+    }
+
     async changePass(
         creds: UserCredentials & { newPass: string }
     ): Promise<string> {
@@ -187,7 +212,7 @@ export default class Auth {
 
     // Private
 
-    private _authOp = false;
+    private _authBlock: Promise<any> | undefined;
     private _onAuth$: Promise<string> | undefined;
     private _onAuthResolver: ((pub: string) => void) | undefined;
     private _subscribedToAuth = false;
@@ -223,6 +248,7 @@ export default class Auth {
                     if (pub) {
                         // Actually logged in.
                         // (This is Gun v0.2020.520 behaviour only)
+                        console.warn('Logged in without login acknowledgement. Your data may not be synced to peers.')
                         resolveOnce(pub);
                     } else if ((ack as any).lack) {
                         // Timed out
@@ -262,7 +288,7 @@ export default class Auth {
         ]);
     }
 
-    private async _recallSessionStorage(opts: AuthRecallOptions): Promise<string | undefined> {
+    private async _recallSessionStorage(opts: AuthBasicOptions): Promise<string | undefined> {
         let recallAction = new Promise<string | undefined>((resolve, reject) => {
             let resolveOnce: (typeof resolve) | undefined = resolve;
             let rejectOnce: (typeof reject) | undefined = reject;
@@ -392,15 +418,16 @@ export default class Auth {
         return pub;
     }
 
-    private async _beginAuthBlock<T>(block: () => Promise<T>): Promise<T> {
-        if (this._authOp) {
-            throw new AuthError('Already performing a user operation');
+    private async _beginAuthBlock<T>(blockFactory: () => Promise<T>): Promise<T> {
+        if (this._authBlock) {
+            throw new MultipleAuthError('Already performing a user operation');
         }
         try {
-            this._authOp = true;
-            return await block();
+            let block = blockFactory();
+            this._authBlock = block;
+            return await block;
         } finally {
-            this._authOp = false;
+            this._authBlock = undefined;
             this._endOnAuth();
         }
     }

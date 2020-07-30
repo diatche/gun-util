@@ -34,9 +34,30 @@ export async function waitForData<T = any>(ref: IGunChainReference<Record<any, T
  * @param ms 
  * @param passthrough 
  */
-export function delay<T=any>(ms: number, passthrough?: T): Promise<T> {
+export function delay<T = any>(ms: number, passthrough?: T): Promise<T> {
     return new Promise<T>((resolve, reject) => {
         setTimeout(() => resolve(passthrough), ms);
     });
 }
 
+/**
+ * Throw error after `ms` interval.
+ * @param ms 
+ * @param error 
+ */
+export async function errorAfter<T = void>(ms: number, error: Error): Promise<T> {
+    await delay(ms);
+    throw error;
+}
+
+/**
+ * Throw error after `ms` interval.
+ * @param ms 
+ * @param error 
+ */
+export async function timeoutAfter<T = any>(promise: Promise<T>, ms: number, error: Error): Promise<T> {
+    return Promise.race([
+        promise,
+        errorAfter<T>(ms, error),
+    ]);
+}
