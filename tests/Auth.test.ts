@@ -13,7 +13,7 @@ let creds: UserCredentials;
 
 const newCreds = () => {
     return {
-        alias: uuidv4(),
+        alias: 'test-' + uuidv4(),
         pass: uuidv4()
     };
 };

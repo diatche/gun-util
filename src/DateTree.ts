@@ -77,14 +77,14 @@ export default class DateTree<T = any> {
     }
 
     nextDate(date: DateParsable): Moment {
-        let m = parseDate(date);
+        let m = DateTree.parseDate(date);
         let floor = m.startOf(this.resolution);
         let next = floor.add(1, this.resolution);
         return next;
     }
 
     previousDate(date: DateParsable): Moment {
-        let m = parseDate(date);
+        let m = DateTree.parseDate(date);
         let floor = m.startOf(this.resolution);
         if (floor.isSame(m)) {
             floor = floor.subtract(1, this.resolution);
@@ -112,14 +112,9 @@ export default class DateTree<T = any> {
         // TODO: add updates support
         let range = mapValueRange(
             rangeWithFilter(opts),
-            parseDate
+            x => DateTree.parseDate(x, this.resolution),
         );
-        let {
-            start,
-            end,
-            startClosed,
-            endClosed,
-        } = range;
+        let { start, end } = range;
 
         if (!start && !end) {
             return this._onAny(cb);
@@ -166,11 +161,8 @@ export default class DateTree<T = any> {
                 {
                     start: startComps,
                     end: endComps,
-                    startClosed,
-                    endClosed
                 },
                 innerUnit!,
-                this.resolution
             );
             let {
                 start: innerStart,
@@ -271,7 +263,7 @@ export default class DateTree<T = any> {
      * @returns An unsubscribe function
      */
     changesAbout(date: DateParsable, callback: (comps: DateComponents, sub: Subscription) => void): Subscription {
-        let m = parseDate(date);
+        let m = DateTree.parseDate(date);
         let comps = DateTree.getDateComponents(m, this.resolution);
         let units = Object.keys(comps);
         let refs = this._getRefChain(comps);
@@ -389,7 +381,7 @@ export default class DateTree<T = any> {
      * @returns Gun node reference
      */
     get(date: DateParsable): IGunChainReference<T> {
-        let comps = DateTree.getDateComponents(parseDate(date), this.resolution);
+        let comps = DateTree.getDateComponents(DateTree.parseDate(date), this.resolution);
         let chain = this._getRefChain(comps);
         return chain[chain.length - 1] as any;
     }
@@ -445,7 +437,7 @@ export default class DateTree<T = any> {
      */
     async next(date?: DateParsable): Promise<[IGunChainReference<T> | undefined, Moment | undefined]> {
         let it = this.iterate({
-            gt: date && parseDate(date) || undefined,
+            gt: date && DateTree.parseDate(date, this.resolution) || undefined,
             order: 1,
         });
         for await (let [ref, refDate] of it) {
@@ -470,7 +462,7 @@ export default class DateTree<T = any> {
      */
     async previous(date?: Moment): Promise<[IGunChainReference<T> | undefined, Moment | undefined]> {
         let it = this.iterate({
-            lt: date && parseDate(date) || undefined,
+            lt: date && DateTree.parseDate(date, this.resolution) || undefined,
             order: -1,
         });
         for await (let [ref, refDate] of it) {
@@ -493,13 +485,11 @@ export default class DateTree<T = any> {
      * @param param0 
      */
     async * iterate(opts: DateIterateOptions = {}): AsyncGenerator<[IGunChainReference<T>, Moment]> {
-        let range = rangeWithFilter(opts);
-        let {
-            start,
-            end,
-            startClosed,
-            endClosed,
-        } = range;
+        let range = mapValueRange(
+            rangeWithFilter(opts),
+            x => DateTree.parseDate(x, this.resolution),
+        );
+        let { start, end } = range;
         let { order } = opts;
         let ref: IGunChainReference | undefined = this.root;
         let startComps = (start && DateTree.getDateComponents(start, this.resolution) || {}) as Partial<DateComponentsUnsafe>;
@@ -522,11 +512,8 @@ export default class DateTree<T = any> {
                     {
                         start: startComps,
                         end: endComps,
-                        startClosed,
-                        endClosed
                     },
                     unit,
-                    this.resolution
                 );
                 let filter = filterWithRange(range);
                 it = this._iterateRef(ref, {
@@ -545,7 +532,10 @@ export default class DateTree<T = any> {
                         comps,
                         this.resolution
                     );
-                    yield [innerRef, date];
+                    // Filter boundaries
+                    if (isInRange(date, range)) {
+                        yield [innerRef, date];
+                    }
                 }
                 // Go up a level
                 goUp = true;
@@ -627,7 +617,7 @@ export default class DateTree<T = any> {
     }
 
     static getDateComponents(date: DateParsable, resolution: DateUnit): DateComponents {
-        let m = parseDate(date);
+        let m = this.parseDate(date);
         if (!this.isResolution(resolution)) {
             throw new Error('Invalid graph date resolution: ' + resolution);
         }
@@ -642,7 +632,7 @@ export default class DateTree<T = any> {
     }
 
     static getDateComponent(date: DateParsable, unit: DateUnit): number {
-        let m = parseDate(date);
+        let m = this.parseDate(date);
         let val = m.get(nativeDateUnit(unit));
         return graphDateValue(val, unit);
     }
@@ -693,9 +683,8 @@ export default class DateTree<T = any> {
 
     static getDateComponentKeyRange(
         comps: DateComponents,
-        compRange: Required<ValueRange<DateComponents>>,
+        compRange: Pick<Required<ValueRange<DateComponents>>, 'start' | 'end'>,
         unit: DateUnit,
-        resolution: DateUnit,
     ): ValueRange<string> {
         let [startVal, endVal] = DateTree.getDateComponentRange(
             comps,
@@ -703,14 +692,11 @@ export default class DateTree<T = any> {
             compRange.end,
             unit
         );
-        let atLeaf = unit === resolution;
-        let unitStartClosed = compRange.startClosed || !atLeaf;
-        let unitEndClosed = compRange.endClosed || !atLeaf;
         return {
             start: DateTree.encodeDateComponent(startVal, unit),
             end: DateTree.encodeDateComponent(endVal, unit),
-            startClosed: unitStartClosed,
-            endClosed: unitEndClosed,
+            startClosed: true,
+            endClosed: true,
         };
     }
 
@@ -799,31 +785,27 @@ export default class DateTree<T = any> {
         return str;
     }
 
-    /**
-     * Iterates through all dates between the `start`
-     * and `end` dates at the receiver's resolution.
-     * @param start Start date (inclusive)
-     * @param end End date (exclusive)
-     */
-    static * iterateDates(start: DateParsable, end: DateParsable, resolution: DateUnit): Generator<Moment> {
-        let mStart = parseDate(start).startOf(resolution);
-        let mEnd = parseDate(end).startOf(resolution);
-        let date = mStart;
-        while (date.isBefore(mEnd)) {
-            yield date;
-            date = date.add(resolution);
-        }
-    }
-
     static isResolution(resolution: any): resolution is DateUnit {
         if (typeof resolution !== 'string') return false;
         return DATE_UNIT_SET.has(resolution as DateUnit);
     }
-}
 
-const parseDate = (date: DateParsable): Moment => {
-    return moment.utc(date);
-};
+    /**
+     * Parses a date into a `Moment`, using the
+     * current time zone and converts it into UTC time.
+     * @param date 
+     */
+    static parseDate(date: DateParsable, resolution?: DateUnit): Moment {
+        if (!date || (typeof date === 'number' && (isNaN(date) || !isFinite(date)))) {
+            throw new Error('Invalid date');
+        }
+        let m = moment(date).utc();
+        if (resolution) {
+            m = m.startOf(resolution);
+        }
+        return m;
+    }
+}
 
 const nativeDateUnit = (res: DateUnit): moment.unitOfTime.All => {
     if (res === 'day') {

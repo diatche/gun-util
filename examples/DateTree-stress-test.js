@@ -4,7 +4,7 @@ const { DateTree } = require('../dist');
 const moment = require('moment');
 
 let gun = Gun();
-let treeRoot = gun.get('tree-stress');
+let treeRoot = gun.get('test-tree-stress');
 let resolution = 'day'
 let tree = new DateTree(treeRoot, resolution);
 

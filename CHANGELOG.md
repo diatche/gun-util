@@ -4,6 +4,20 @@
 
 Changes on `develop` will be listed here.
 
+## 0.0.9
+
+### Features
+
+- Made `DateTree.parseDate()` public.
+
+### Bug Fixes
+
+- Fixed using `DateTree` with non UTC dates.
+
+### Breaking Changes
+
+- Removed redundant method `DateTree.iterateDates()`.
+
 ## 0.0.8
 
 - Updated dependencies.
@@ -12,13 +26,13 @@ Changes on `develop` will be listed here.
 
 ### Features
 
-- Added `DateTree#.on()` method, which allows subscribing to all or a subset of
+- Added `DateTree#on()` method, which allows subscribing to all or a subset of
 the tree's data.
 - Filter methods support any value which has a `valueOf()` method.
-- `DateTree#.getDate()` can now be used with a reference from a callback.
-- Added `DateTree#.largestCommonUnit()`.
-- Added `DateTree#.getDateComponentKeyRange()`.
-- Added `DateTree#.dateComponentsToString()`.
+- `DateTree#getDate()` can now be used with a reference from a callback.
+- Added `DateTree#largestCommonUnit()`.
+- Added `DateTree#getDateComponentKeyRange()`.
+- Added `DateTree#dateComponentsToString()`.
 
 ### Breaking Changes
 
@@ -35,12 +49,12 @@ the tree's data.
 ### Breaking Changes
 
 - The stateless `GunUser` has been replaced with a stateful `Auth`. The methods are almost
-identical, with the exception of `GunUser.current()`, which is now `Auth#.user()`.
+identical, with the exception of `GunUser.current()`, which is now `Auth#user()`.
 - `IterateOptions` no longer uses `start`, `end`, `startInclusive`, `endInclusive`. Instead
 `gt`, `gte`, `lt`, `lte` is used. These can be converted to a `Range`, which resemble the previous
 structure (which is still used internally) using `rangeWithFilter()`.
-- Removed redundant `DateTree#.put()`. Use `DateTree#.get().put()` instead.
-- `DateTree#.changesAbout()` returns an object instead of the `off()` function directly.
+- Removed redundant `DateTree#put()`. Use `DateTree#get().put()` instead.
+- `DateTree#changesAbout()` returns an object instead of the `off()` function directly.
 
 ## 0.0.5
 

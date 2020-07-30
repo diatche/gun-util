@@ -12,7 +12,7 @@ auth.onAuth(gun).then(pub => {
 (async () => {
     console.log('creating account...');
     let creds = {
-        alias: uuidv4(),
+        alias: 'test-' + uuidv4(),
         pass: uuidv4(),
     };
     let pub = await auth.create(creds, gun);

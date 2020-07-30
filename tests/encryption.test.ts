@@ -21,7 +21,7 @@ let runId: string;
 
 const newCreds = () => {
     return {
-        alias: uuidv4(),
+        alias: 'test-' + uuidv4(),
         pass: uuidv4()
     };
 };
@@ -36,7 +36,7 @@ describe('encryption', () => {
 
     beforeEach(async () => {
         // Use a clean node on every run
-        runId = uuidv4();
+        runId = 'test-' + uuidv4();
     });
 
     afterEach(() => {

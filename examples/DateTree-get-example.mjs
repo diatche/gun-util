@@ -2,7 +2,7 @@ import Gun from 'gun';
 import { DateTree } from '../dist/index.mjs';
 
 let gun = Gun();
-let treeRoot = gun.get('tree-get');
+let treeRoot = gun.get('test-tree-get');
 let tree = new DateTree(treeRoot, 'day');
 
 let eventRef = treeRoot.get('2020').get('08').get('23');
