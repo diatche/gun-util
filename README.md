@@ -248,6 +248,11 @@ Have a look at the [examples folder](examples/).
 
 Convenience methods for creating an authenticating a Gun user.
 
+This wrapper handles a couple of edge cases, namely:
+
+- In some Gun versions, callbacks are not fired consistently. This wrapper listens to both local and global `auth` and returns in both cases.
+- When trying to log in to an existing user on an unsynced gun instance, you may get `User does not exist!` errors. This wrapper syncs the necessary data before attempting to login.
+
 **Basics:**
 
 ```javascript
@@ -291,6 +296,12 @@ auth.delegate = {
         await loadSecret(pair);
     },
 }
+```
+
+**Getting a user's public key with an alias:**
+
+```javascript
+let publicKey = await auth.getPub({ alias: 'alice' });
 ```
 
 Have a look at the [examples folder](examples/).

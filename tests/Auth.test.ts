@@ -282,6 +282,36 @@ describe('Auth', () => {
             });
         });
 
+        describe('getPub', () => {
+
+            it('should not return a public for a non existing user', async () => {
+                let pub = await auth.getPub(creds, { timeout: 1000 });
+                expect(pub).toBeFalsy();
+            });
+
+            it ('should return a public key for an existing user', async () => {
+                let pub1 = await auth.create(creds);
+                auth.logout();
+                let pub2 = await auth.getPub(creds, { timeout: 1000 });
+                expect(pub2).toBe(pub1);
+            });
+        });
+
+        describe('exists', () => {
+
+            it('should return false for a non existing user', async () => {
+                let exists = await auth.exists(creds, { timeout: 1000 });
+                expect(exists).toBeFalsy();
+            });
+
+            it ('should return true for an existing user', async () => {
+                await auth.create(creds);
+                auth.logout();
+                let exists = await auth.exists(creds, { timeout: 1000 });
+                expect(exists).toBeTruthy();
+            });
+        });
+
         describe('recall', () => {
 
             beforeAll(() => {

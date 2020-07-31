@@ -2,9 +2,10 @@ import { IGunChainReference } from "gun/types/chain";
 import { InvalidCredentials, GunError, AuthError, UserExists, TimeoutError, MultipleAuthError } from "./errors";
 import { IGunCryptoKeyPair } from "gun/types/types";
 import { isGunAuthPairSupported, isPlatformWeb, isGunInstance } from "./support";
-import { timeoutAfter, errorAfter } from "./wait";
+import { timeoutAfter, errorAfter, waitForData } from "./wait";
 
 const LOGIN_CHECK_DELAY = 500;
+const DEFAULT_EXISTS_TIMEOUT = 2000;
 
 export interface UserCredentials {
     alias: string,
@@ -154,6 +155,72 @@ export default class Auth {
                 throw error;
             }
         });
+    }
+
+    /**
+     * Resolves with a user's public key using the
+     * specified alias, if the user exists.
+     * 
+     * Note that Gun will only be able to find an
+     * existing alias if it has a connection to
+     * a peer which has it.
+     * 
+     * It is recommended to set a reasonable timeout
+     * for this to be effective.
+     */
+    async getPub(
+        creds: { alias: string },
+        options: AuthBasicOptions = {
+            timeout: DEFAULT_EXISTS_TIMEOUT,
+        }
+    ): Promise<string | undefined> {
+        const key = '~@' + creds.alias;
+        let data: any;
+        try {
+            data = await waitForData(this.gun.get(key), options);
+        } catch (error) {
+            if (error instanceof TimeoutError) {
+                return undefined;
+            }
+            throw error;
+        }
+        if (!data) {
+            return undefined;
+        }
+        if ('_' in data) {
+            delete data._;
+        }
+        // Make sure the internal representation hasn't changed
+        let keys = Object.keys(data);
+        if (keys.length !== 1) {
+            throw new GunError('Unsupported Gun version');
+        }
+        let pub = keys[0];
+        if (!pub.startsWith('~')) {
+            throw new GunError('Unsupported Gun version');
+        }
+        return pub.substring(1);
+    }
+
+    /**
+     * Resolves true if a user with the specified `alias`
+     * exists.
+     * 
+     * Note that Gun will only be able to find an
+     * existing alias if it has a connection to
+     * a peer which has it.
+     * 
+     * It is recommended to set a reasonable timeout
+     * for this to be effective.
+     */
+    async exists(
+        creds: { alias: string },
+        options: AuthBasicOptions = {
+            timeout: DEFAULT_EXISTS_TIMEOUT,
+        }
+    ): Promise<boolean> {
+        let pub = await this.getPub(creds, options);
+        return !!pub;
     }
 
     /**

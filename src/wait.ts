@@ -5,19 +5,36 @@ import { TimeoutError } from "./errors";
  * Subscribes to a Gun node reference and return
  * that value when the filter returns a truthy value.
  * 
- * If no filter is specified, returns on the
+ * If no `filter` is specified, returns on the
  * first non-undefined value.
+ * 
+ * If a `timeout` (in milliseconds) is given, and no 
+ * matching data arrives in that time, `timeoutError`
+ * is thrown (or a `TimeoutError` if none given).
+ * 
  * @param ref
  * @param filter 
  */
-export async function waitForData<T = any>(ref: IGunChainReference<Record<any, T>>, filter?: (data: T) => boolean): Promise<T> {
+export async function waitForData<T = any>(
+    ref: IGunChainReference<Record<any, T>>,
+    options: {
+        filter?: (data: T) => boolean;
+        timeout?: number;
+        timeoutError?: Error;
+    } = {},
+): Promise<T> {
     if (!ref) {
         throw new Error('Invalid Gun node reference');
     }
+    let {
+        filter,
+        timeout,
+        timeoutError,
+    } = options;
     if (typeof filter !== 'undefined' && (typeof filter !== 'function' || filter.length === 0)) {
         throw new Error('Invalid filter');
     }
-    return new Promise<T>((resolve, reject) => {
+    let listener = new Promise<T>((resolve, reject) => {
         if (!filter) {
             filter = (data: T) => typeof data !== 'undefined';
         }
@@ -28,6 +45,11 @@ export async function waitForData<T = any>(ref: IGunChainReference<Record<any, T
             }
         });
     });
+    if (timeout && timeout > 0) {
+        return await timeoutAfter(listener, timeout, timeoutError);
+    } else {
+        return await listener;
+    }
 }
 
 /**
