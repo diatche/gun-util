@@ -45,7 +45,7 @@ export default class Auth {
 
     constructor(gun: IGunChainReference) {
         if (!isGunInstance(gun)) {
-            throw new Error('Must specify a valid gun instance');
+            throw new GunError('Must specify a valid gun instance');
         }
         this.gun = gun;
 
@@ -64,7 +64,7 @@ export default class Auth {
             }
             gun = gun || this.defaultGun;
             if (!isGunInstance(gun)) {
-                throw new Error('Must specify a valid gun instance or set a default');
+                throw new GunError('Must specify a valid gun instance or set a default');
             }
             this._default = new Auth(gun);
         }
@@ -284,7 +284,7 @@ export default class Auth {
                         // Timed out
                         rejectOnce(new TimeoutError(ack.err));
                     } else {
-                        rejectOnce(new InvalidCredentials(ack.err));
+                        rejectOnce(Auth._parseGunError(ack.err, InvalidCredentials));
                     }
                 } else {
                     resolveOnce(ack.sea.pub);
@@ -306,7 +306,7 @@ export default class Auth {
             } else {
                 // Supported after Gun v0.2020.520.
                 if (!isGunAuthPairSupported(this.gun)) {
-                    throw new Error('This version of Gun only supports auth with alias and pass');
+                    throw new GunError('This version of Gun only supports auth with alias and pass');
                 }
                 user.auth(creds, cb);
             }
@@ -362,7 +362,7 @@ export default class Auth {
                         // Timed out
                         rejectOnce(new TimeoutError(ack.err));
                     } else {
-                        rejectOnce(new InvalidCredentials(ack.err));
+                        rejectOnce(Auth._parseGunError(ack.err, InvalidCredentials));
                     }
                 } else {
                     resolveOnce(ack.sea.pub);
@@ -393,7 +393,7 @@ export default class Auth {
             }
 
             if (this.pub()) {
-                throw new GunError('Should not be logged in when creating a user');
+                throw new MultipleAuthError('Should not be logged in when creating a user');
             }
             
             this.gun.user().create(alias, pass, ack => {
@@ -404,7 +404,7 @@ export default class Auth {
                         // Actually created user
                         resolve(pub);
                     } else {
-                        reject(new UserExists(ack.err));
+                        reject(Auth._parseGunError(ack.err, UserExists));
                     }
                 } else {
                     resolve(ack.pub);
@@ -475,6 +475,15 @@ export default class Auth {
         } finally {
             this._authBlock = undefined;
             this._endOnAuth();
+        }
+    }
+
+    private static _parseGunError(error: string, defaultClass = GunError): GunError {
+        switch (error) {
+            case 'User is already being created or authenticated!':
+                return new MultipleAuthError(error);
+            default:
+                return new defaultClass(error);
         }
     }
 }
