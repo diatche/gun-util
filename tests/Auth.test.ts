@@ -67,7 +67,8 @@ describe('Auth', () => {
             auth = new Auth(gun);
         });
 
-        beforeEach(() => {
+        beforeEach(async () => {
+            await auth.join();
             // New credentials on each run
             creds = newCreds();
         });
@@ -272,12 +273,12 @@ describe('Auth', () => {
                 let didCb = false;
                 auth.on(() => { didCb = true; }).then(pub1 => {
                     expect(pub1).toEqual(pub);
+                    expect(didCb).toBeTruthy();
                     done();
                 });
                 gun.user().auth(creds.alias, creds.pass, ack => {
                     pub = (ack as any).sea.pub;
                     expect(pub).toBeTruthy();
-                    expect(didCb).toBeTruthy();
                 });
             });
         });
@@ -370,12 +371,12 @@ describe('Auth', () => {
                 await auth.create(creds);
                 pair = auth.pair()!;
                 expect(pair).toBeTruthy();
-                auth.logout();
             });
 
             it.skip('should delete in an existing user with correct credentials', async () => {
                 // Re-enable when fixed in Gun
                 await auth.delete(creds);
+                expect(auth.pair()).toBeFalsy();
                 let user = '';
                 let caughtError: Error | undefined;
                 try {

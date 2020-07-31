@@ -5,7 +5,6 @@ import { isGunAuthPairSupported, isPlatformWeb, isGunInstance } from "./support"
 import { timeoutAfter, errorAfter, waitForData } from "./wait";
 
 const LOGIN_CHECK_DELAY = 500;
-const DEFAULT_EXISTS_TIMEOUT = 2000;
 
 export interface UserCredentials {
     alias: string,
@@ -13,8 +12,21 @@ export interface UserCredentials {
 }
 
 export interface AuthBasicOptions {
-    /** Timeout `ms` interval. */
+    /** Timeout interval in milliseconds. */
     timeout?: number;
+
+    /**
+     * Time in milliseconds to spend looking
+     * for a user with an alias (where applicable).
+     * 
+     * Note that Gun will only be able to find an
+     * existing alias if it has a connection to
+     * a peer which has it.
+     * 
+     * It is recommended to set a reasonable timeout
+     * for this to be effective.
+     */
+    existsTimeout?: number;
 }
 
 export interface AuthDelegate {
@@ -43,6 +55,11 @@ export default class Auth {
      * Set to zero to disable (not recommended).
      */
     static defaultTimeout = 10000;
+    /**
+     * Default time in milliseconds to spend looking
+     * for a user with an alias (where applicable).
+     */
+    static defaultExistsTimeout = 3000;
 
     constructor(gun: IGunChainReference) {
         if (!isGunInstance(gun)) {
@@ -170,14 +187,16 @@ export default class Auth {
      */
     async getPub(
         creds: { alias: string },
-        options: AuthBasicOptions = {
-            timeout: DEFAULT_EXISTS_TIMEOUT,
-        }
+        options: Pick<AuthBasicOptions, 'timeout'> = {}
     ): Promise<string | undefined> {
+        let {
+            timeout = Auth.defaultExistsTimeout,
+        } = options;
+        timeout = Math.max(0, timeout);
         const key = '~@' + creds.alias;
         let data: any;
         try {
-            data = await waitForData(this.gun.get(key), options);
+            data = await waitForData(this.gun.get(key), { timeout });
         } catch (error) {
             if (error instanceof TimeoutError) {
                 return undefined;
@@ -215,9 +234,7 @@ export default class Auth {
      */
     async exists(
         creds: { alias: string },
-        options: AuthBasicOptions = {
-            timeout: DEFAULT_EXISTS_TIMEOUT,
-        }
+        options: AuthBasicOptions = {}
     ): Promise<boolean> {
         let pub = await this.getPub(creds, options);
         return !!pub;
@@ -372,12 +389,22 @@ export default class Auth {
     private static _default: Auth | undefined;
 
     private async _login(
-        creds: UserCredentials | IGunCryptoKeyPair,
+        creds: UserCredentials & Partial<IGunCryptoKeyPair> | Partial<UserCredentials> & IGunCryptoKeyPair,
         options: AuthBasicOptions,
     ): Promise<string> {
         const {
             timeout = Auth.defaultTimeout,
+            existsTimeout = Auth.defaultExistsTimeout,
         } = options;
+
+        if (creds.alias) {
+            // Sync user before login in
+            await this.exists(
+                { alias: creds.alias },
+                { timeout: existsTimeout },
+            );
+        }
+
         const loginCheckDelay = timeout && timeout > 1000
             ? Math.min(LOGIN_CHECK_DELAY, timeout - 100)
             : 0;
@@ -516,7 +543,20 @@ export default class Auth {
     ): Promise<string> {
         const {
             timeout = Auth.defaultTimeout,
+            existsTimeout = Auth.defaultExistsTimeout,
         } = options;
+
+        if (alias) {
+            // Check if user with alias already exists
+            let exists = await this.exists(
+                { alias },
+                { timeout: existsTimeout },
+            );
+            if (exists) {
+                throw new UserExists('User already created!');
+            }
+        }
+
         let createAction = new Promise<string>((resolve, reject) => {
             let options: any = {};
             if (newPass) {

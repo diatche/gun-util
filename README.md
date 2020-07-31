@@ -248,10 +248,13 @@ Have a look at the [examples folder](examples/).
 
 Convenience methods for creating an authenticating a Gun user.
 
-This wrapper handles a couple of edge cases, namely:
+This wrapper provides greater consistency by handling a couple of edge cases, namely:
 
 - In some Gun versions, callbacks are not fired consistently. This wrapper listens to both local and global `auth` and returns in both cases.
 - When trying to log in to an existing user on an unsynced gun instance, you may get `User does not exist!` errors. This wrapper syncs the necessary data before attempting to login.
+- Another more troublesome pitfall with unsynced gun instances is if you try to create a user with an alias which has already been user on another Gun instance, you will get different key pairs and will not be able to sync the data of that user between those Gun instances. This wrapper takes extra precautions before creating a user (no guarantees though, it all depends on how long you want to wait for the sync to happen).
+
+See also the **Notes** section below.
 
 **Basics:**
 
@@ -312,7 +315,7 @@ Have a look at the [examples folder](examples/).
 
 ### Other Methods
 
-- `waitForData(ref, filter?)`
+- `waitForData(ref, { filter?, timeout? })`
   - Returns a promise, which resolves when data arrives at a node reference.
 - `delay(ms, passthrough?)`
   - Promisified `setTimeout()`.
