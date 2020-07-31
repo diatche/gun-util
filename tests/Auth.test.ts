@@ -11,6 +11,8 @@ let gun: IGunChainReference;
 let auth: Auth;
 let creds: UserCredentials;
 
+Auth.defaultTimeout = 20000;
+
 const newCreds = () => {
     return {
         alias: 'test-' + uuidv4(),
@@ -297,6 +299,7 @@ describe('Auth', () => {
             });
 
             it.skip('should change credentials and login', async () => {
+                // Re-enable when fixed in Gun
                 let pub = await auth.login(creds);
                 let newPub = await auth.changePass({ ...creds, newPass: 'roo' });
 
@@ -307,6 +310,32 @@ describe('Auth', () => {
                 auth.logout();
                 let againPub = await auth.login({ ...creds, pass: 'roo' });
                 expect(againPub).toEqual(newPub);
+            });
+        });
+
+        describe('delete', () => {
+
+            let pair: IGunCryptoKeyPair;
+
+            beforeEach(async () => {
+                await auth.create(creds);
+                pair = auth.pair()!;
+                expect(pair).toBeTruthy();
+                auth.logout();
+            });
+
+            it.skip('should delete in an existing user with correct credentials', async () => {
+                // Re-enable when fixed in Gun
+                await auth.delete(creds);
+                let user = '';
+                let caughtError: Error | undefined;
+                try {
+                    user = await auth.login(creds);
+                } catch(error) {
+                    caughtError = error;
+                }
+                expect(user).toBeFalsy();
+                expect(caughtError).toBeInstanceOf(InvalidCredentials);
             });
         });
 

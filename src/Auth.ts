@@ -41,7 +41,7 @@ export default class Auth {
      * Default timeout in milliseconds for user operations.
      * Set to zero to disable (not recommended).
      */
-    static defaultTimeout = 5000;
+    static defaultTimeout = 10000;
 
     constructor(gun: IGunChainReference) {
         if (!isGunInstance(gun)) {
@@ -120,7 +120,16 @@ export default class Auth {
     ): Promise<string> {
         this.logout();
         return this._beginAuthBlock(async () => {
-            return await this._login(creds, options);
+            try {
+                return await this._login(creds, options);
+            } catch (error) {
+                if (error instanceof MultipleAuthError) {
+                    // Wait for internal work and try again
+                    await this._gunUserAction;
+                    return await this._login(creds, options);
+                }
+                throw error;
+            }
         });
     }
 
@@ -134,7 +143,16 @@ export default class Auth {
     ): Promise<string> {
         this.logout();
         return this._beginAuthBlock(async () => {
-            return await this._create(creds, options);
+            try {
+                return await this._create(creds, options);
+            } catch (error) {
+                if (error instanceof MultipleAuthError) {
+                    // Wait for internal work and try again
+                    await this._gunUserAction;
+                    return await this._create(creds, options);
+                }
+                throw error;
+            }
         });
     }
 
@@ -142,18 +160,28 @@ export default class Auth {
      * Login a previously saved user.
      */
     async recall(options: AuthBasicOptions = {}): Promise<string | undefined> {
-        return this._beginAuthBlock(async () => {
-            if (this.delegate?.recallPair) {
-                let pair = await this.delegate!.recallPair(this, options);
-                if (pair) {
-                    // Auth with pair
-                    return await this._login(pair, options);
-                }
-            } else if (isPlatformWeb()) {
-                return await this._recallSessionStorage(options);
+        if (this.delegate?.recallPair) {
+            let pair = await this.delegate!.recallPair(this, options);
+            if (pair) {
+                // Auth with pair
+                return await this.login(pair, options);
             }
+        } else if (isPlatformWeb()) {
+            return this._beginAuthBlock(async () => {
+                try {
+                    return await this._recallSessionStorage(options);
+                } catch (error) {
+                    if (error instanceof MultipleAuthError) {
+                        // Wait for internal work and try again
+                        await this._gunUserAction;
+                        return await this._recallSessionStorage(options);
+                    }
+                    throw error;
+                }
+            });
+        } else {
             return undefined;
-        });
+        }
     }
 
     /**
@@ -186,6 +214,42 @@ export default class Auth {
     }
 
     /**
+     * Changes a user's password.
+     * 
+     * **Does not work with Gun v0.2020.520**
+    */
+    async changePass(
+        creds: UserCredentials & { newPass: string },
+        options: AuthBasicOptions = {},
+    ): Promise<string> {
+        this.logout();
+        return this.create(creds, options);
+    }
+
+    /**
+     * Deletes a user.
+     * 
+     * **Does not work with Gun v0.2020.520**
+    */
+    async delete(
+        creds: UserCredentials,
+        options: AuthBasicOptions = {},
+    ): Promise<void> {
+        return this._beginAuthBlock(async () => {
+            try {
+                return await this._delete(creds, options);
+            } catch (error) {
+                if (error instanceof MultipleAuthError) {
+                    // Wait for internal work and try again
+                    await this._gunUserAction;
+                    return await this._delete(creds, options);
+                }
+                throw error;
+            }
+        });
+    }
+
+    /**
      * Wait for all user operations to finish.
      */
     async join(options: AuthBasicOptions = {}): Promise<void> {
@@ -193,9 +257,11 @@ export default class Auth {
         let stop = false;
 
         let joins = (async () => {
+            await this._gunUserAction;
             while (!stop && this._authBlock) {
                 await this._authBlock;
             }
+            await this._gunUserAction;
         })();
 
         if (timeout) {
@@ -209,32 +275,14 @@ export default class Auth {
         }
     }
 
-    async changePass(
-        creds: UserCredentials & { newPass: string },
-        options: AuthBasicOptions = {},
-    ): Promise<string> {
-        this.logout();
-        return this._beginAuthBlock(async () => {
-            return await this._create(creds, options);
-        });
-    }
-
-    async delete({ alias, pass }: UserCredentials): Promise<void> {
-        return this._beginAuthBlock(async () => {
-            return new Promise((resolve, reject) => {
-                this.gun.user().delete(alias, pass, ack => {
-                    if (!this.pub()) {
-                        resolve();
-                    } else {
-                        reject(new GunError('Failed to delete user'));
-                    }
-                });
-            });
-        });
-    }
-
     // Private
 
+    /** Internal gun user work. */
+    private _gunUserAction: Promise<any> | undefined;
+    /**
+     * Auth user work wrapper. This can finish
+     * faster than `_gunUserAction`.
+     */
     private _authBlock: Promise<any> | undefined;
     private _onAuth$: Promise<string> | undefined;
     private _onAuthResolver: ((pub: string) => void) | undefined;
@@ -312,6 +360,7 @@ export default class Auth {
             }
         });
 
+        this._gunUserAction = loginAction;
         let promises = [
             loginAction,
             this.onAuth(),
@@ -373,6 +422,7 @@ export default class Auth {
             });
         });
 
+        this._gunUserAction = recallAction;
         return Promise.race([
             recallAction,
             this.onAuth()
@@ -412,10 +462,35 @@ export default class Auth {
             }, options);
         });
 
+        this._gunUserAction = createAction;
         let promises = [
             createAction,
             this.onAuth(),
         ];
+        if (timeout && timeout > 0) {
+            promises.push(errorAfter(timeout, new TimeoutError()));
+        }
+        return Promise.race(promises);
+    }
+
+    private async _delete(
+        { alias, pass }: UserCredentials,
+        options: AuthBasicOptions,
+    ): Promise<void> {
+        const {
+            timeout = Auth.defaultTimeout,
+        } = options;
+        let deleteAction = new Promise<void>((resolve, reject) => {
+            this.gun.user().delete(alias, pass, ack => {
+                if (!this.pub()) {
+                    resolve();
+                } else {
+                    reject(new GunError('Failed to delete user'));
+                }
+            });
+        });
+        this._gunUserAction = deleteAction;
+        let promises = [deleteAction];
         if (timeout && timeout > 0) {
             promises.push(errorAfter(timeout, new TimeoutError()));
         }
