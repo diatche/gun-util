@@ -248,11 +248,36 @@ Have a look at the [examples folder](examples/).
 
 Convenience methods for creating an authenticating a Gun user.
 
+**Basics:**
+
+```javascript
+let gun = new Gun()
+let auth = new Auth(gun);
+
+await auth.create({
+    alias: 'alice',
+    pass: 'secret'
+});
+
+auth.logout();
+
+await auth.login({
+    alias: 'alice',
+    pass: 'secret'
+});
+```
+
+**Watching for authentication:**
+
+```javascript
+auth.on
+```
+
 Have a look at the [examples folder](examples/).
 
 #### Notes
 
-- It's been observed that multiple `gun.on('auth', cb)`. If you use your own `gun.on('auth', cb)` listener, call `Auth#didAuth()` inside of it.
+- It's been observed that multiple `gun.on('auth', cb)`. If you use your own `gun.on('auth', cb)` listener, call `Auth#did()` inside of it.
 
 ### Other Methods
 

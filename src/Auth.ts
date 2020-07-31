@@ -185,17 +185,28 @@ export default class Auth {
     }
 
     /**
+     * Subscribe to authentication events with
+     * a callback. If a user is already authenticated,
+     * it is called immediately.
+     * 
+     * Also returns a promise which
      * Resolves when a user has been authenticated.
      * If a user is already authenticated, resolves
      * immediately.
      */
-    async onAuth(cb?: () => void): Promise<string> {
-        // Allow multiple subscriptions to onAuth,
-        // so share the promise.
+    async on(cb?: () => void): Promise<string> {
+        if (cb) {
+            this._addOnAuthCallback(cb);
+        }
+
         let pub = this.pub();
         if (pub) {
+            cb?.();
             return Promise.resolve(pub);
         }
+
+        // Allow multiple subscriptions to on,
+        // so share the promise.
         if (!this._onAuth$) {
             this._onAuth$ = this._onAuth();
         }
@@ -209,7 +220,7 @@ export default class Auth {
      * Why? It's been observed that multiple `gun.on('auth', cb)`
      * listeners don't work.
      */
-    didAuth() {
+    did() {
         this._endOnAuth();
     }
 
@@ -289,17 +300,9 @@ export default class Auth {
     private _onAuth$: Promise<string> | undefined;
     private _onAuthResolver: ((pub: string) => void) | undefined;
     private _subscribedToAuth = false;
+    private _onAuthCallbacks: (() => void)[] = [];
 
     private static _default: Auth | undefined;
-
-    private async _joinInternal(): Promise<void> {
-        if (!this._gunUserAction) {
-            return;
-        }
-        try {
-            await this._gunUserAction;
-        } catch (error) {}
-    }
 
     private async _login(
         creds: UserCredentials | IGunCryptoKeyPair,
@@ -374,7 +377,7 @@ export default class Auth {
         this._gunUserAction = loginAction;
         let promises = [
             loginAction,
-            this.onAuth(),
+            this.on(),
         ];
         if (timeout && timeout > 0) {
             promises.push(errorAfter(timeout, new TimeoutError()));
@@ -436,7 +439,7 @@ export default class Auth {
         this._gunUserAction = recallAction;
         return Promise.race([
             recallAction,
-            this.onAuth()
+            this.on()
         ]);
     }
 
@@ -476,7 +479,7 @@ export default class Auth {
         this._gunUserAction = createAction;
         let promises = [
             createAction,
-            this.onAuth(),
+            this.on(),
         ];
         if (timeout && timeout > 0) {
             promises.push(errorAfter(timeout, new TimeoutError()));
@@ -508,6 +511,15 @@ export default class Auth {
         return Promise.race(promises);
     }
 
+    private async _joinInternal(): Promise<void> {
+        if (!this._gunUserAction) {
+            return;
+        }
+        try {
+            await this._gunUserAction;
+        } catch (error) {}
+    }
+
     private async _onAuth(): Promise<string> {
         return new Promise<string>((resolve, reject) => {
             // Allow resolving immediately in other methods
@@ -529,6 +541,10 @@ export default class Auth {
         });
     }
 
+    private _addOnAuthCallback(cb: () => void) {
+        this._onAuthCallbacks.push(cb);
+    }
+
     private _beginOnAuth(resolver: (pub: string) => void) {
         this._onAuthResolver = resolver;
     }
@@ -536,16 +552,26 @@ export default class Auth {
     private _endOnAuth(pub?: string) {
         pub = pub || this.pub();
         if (pub) {
-            let resolve = this._onAuthResolver;
-            this._onAuthResolver = undefined;
-            this._onAuth$ = undefined;
-            resolve?.(pub);
+            // Inform delegate
             if (this.delegate?.storePair) {
                 let pair = this.pair();
                 if (pair) {
                     this.delegate.storePair(pair, this);
                 }
             }
+
+            // on callbacks
+            for (let cb of this._onAuthCallbacks) {
+                cb();
+            }
+
+            // Resolve on promise.
+            // We resolve this last to sync all different
+            // types of listeners.
+            let resolve = this._onAuthResolver;
+            this._onAuthResolver = undefined;
+            this._onAuth$ = undefined;
+            resolve?.(pub);
         }
         return pub;
     }

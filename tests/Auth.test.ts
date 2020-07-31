@@ -190,7 +190,7 @@ describe('Auth', () => {
             });
         });
 
-        describe('onAuth', () => {
+        describe('on', () => {
 
             beforeEach(async () => {
                 await auth.create(creds);
@@ -198,28 +198,41 @@ describe('Auth', () => {
             });
 
             it('should resolve all listeneres when user created', async () => {
+                let didCb1 = false;
+                let didCb2 = false;
+
                 let [pub1, pub2, user] = await Promise.all([
-                    auth.onAuth(),
-                    auth.onAuth(),
+                    auth.on(() => { didCb1 = true; }),
+                    auth.on(() => { didCb2 = true; }),
                     auth.create(newCreds())
                 ]);
+
                 expect(pub1).toEqual(user);
                 expect(pub2).toEqual(user);
+                expect(didCb1).toBeTruthy();
+                expect(didCb2).toBeTruthy();
             });
 
             it('should resolve all listeneres when logged in', async () => {
+                let didCb1 = false;
+                let didCb2 = false;
+
                 let [pub1, pub2, user] = await Promise.all([
-                    auth.onAuth(),
-                    auth.onAuth(),
+                    auth.on(() => { didCb1 = true; }),
+                    auth.on(() => { didCb2 = true; }),
                     auth.login(creds)
                 ]);
+
                 expect(pub1).toEqual(user);
                 expect(pub2).toEqual(user);
+                expect(didCb1).toBeTruthy();
+                expect(didCb2).toBeTruthy();
             });
 
             it('should resolve when logged in after a failed attempt', async () => {
                 // Subscribe to auth
-                let onAuth = auth.onAuth();
+                let didCb = false;
+                let on = auth.on(() => { didCb = true; });
                 let error: any;
                 try {
                     await auth.login({ ...creds, pass: 'x' });
@@ -227,11 +240,13 @@ describe('Auth', () => {
                     error = e;
                 }
                 expect(error).toBeTruthy();
+                expect(didCb).toBeFalsy();
                 let [pub1, user] = await Promise.all([
-                    onAuth,
+                    on,
                     auth.login(creds)
                 ]);
                 expect(pub1).toEqual(user);
+                expect(didCb).toBeTruthy();
             });
 
             it('should resolve when logged in with different user', async () => {
@@ -242,23 +257,27 @@ describe('Auth', () => {
                 let user1 = await auth.login(creds);
                 auth.logout();
 
+                let didCb = false;
                 let [pub2, user2] = await Promise.all([
-                    auth.onAuth(),
+                    auth.on(() => { didCb = true; }),
                     auth.login(creds2)
                 ]);
                 expect(pub2).toEqual(user2);
                 expect(user2).not.toEqual(user1);
+                expect(didCb).toBeTruthy();
             });
 
             it('should resolve when logged in with Gun methods', done => {
                 let pub = '';
-                auth.onAuth().then(pub1 => {
+                let didCb = false;
+                auth.on(() => { didCb = true; }).then(pub1 => {
                     expect(pub1).toEqual(pub);
                     done();
                 });
                 gun.user().auth(creds.alias, creds.pass, ack => {
                     pub = (ack as any).sea.pub;
                     expect(pub).toBeTruthy();
+                    expect(didCb).toBeTruthy();
                 });
             });
         });

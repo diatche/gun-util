@@ -9,7 +9,11 @@ Changes on `develop` will be listed here.
 - When attempting to start another login while another is in progress, `Auth` throws a `MultipleAuthError` instead of `AuthError`.
 - You can wait for a user operation to finish using `Auth#join()`.
 - Added `errorAfter()` and `timeoutAfter()` utility methods.
-- Added `Auth#didAuth()` method to allow using your own `gun.on('auth', cb)` listener.
+- Added `Auth#did()` method to allow using your own `gun.on('auth', cb)` listener.
+
+### Breaking Changes
+
+- Renamed `Auth#on()` to `Auth#on()`.
 
 ## 0.0.9
 

@@ -5,7 +5,7 @@ const { Auth } = require('../dist');
 let gun = Gun();
 let auth = Auth.default(gun);
 
-auth.onAuth(gun).then(pub => {
+auth.on(gun).then(pub => {
     console.log('Detected login: ' + pub);
 });
 
