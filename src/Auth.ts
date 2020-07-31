@@ -2,7 +2,7 @@ import { IGunChainReference } from "gun/types/chain";
 import { InvalidCredentials, GunError, AuthError, UserExists, TimeoutError, MultipleAuthError } from "./errors";
 import { IGunCryptoKeyPair } from "gun/types/types";
 import { isGunAuthPairSupported, isPlatformWeb, isGunInstance } from "./support";
-import { timeoutAfter } from "./wait";
+import { timeoutAfter, errorAfter } from "./wait";
 
 const LOGIN_CHECK_DELAY = 500;
 
@@ -37,6 +37,11 @@ export default class Auth {
     delegate?: AuthDelegate;
 
     static defaultGun: IGunChainReference | undefined;
+    /**
+     * Default timeout in milliseconds for user operations.
+     * Set to zero to disable (not recommended).
+     */
+    static defaultTimeout = 5000;
 
     constructor(gun: IGunChainReference) {
         if (!isGunInstance(gun)) {
@@ -109,10 +114,13 @@ export default class Auth {
      * Login an existing user.
      * @param creds
      */
-    async login(creds: UserCredentials | IGunCryptoKeyPair): Promise<string> {
+    async login(
+        creds: UserCredentials | IGunCryptoKeyPair,
+        options: AuthBasicOptions = {},
+    ): Promise<string> {
         this.logout();
         return this._beginAuthBlock(async () => {
-            return await this._login(creds);
+            return await this._login(creds, options);
         });
     }
 
@@ -120,26 +128,29 @@ export default class Auth {
      * Create a user and automatically login.
      * @param creds 
      */
-    async create(creds: UserCredentials): Promise<string> {
+    async create(
+        creds: UserCredentials,
+        options: AuthBasicOptions = {},
+    ): Promise<string> {
         this.logout();
         return this._beginAuthBlock(async () => {
-            return await this._create(creds);
+            return await this._create(creds, options);
         });
     }
 
     /**
      * Login a previously saved user.
      */
-    async recall(opts: AuthBasicOptions = {}): Promise<string | undefined> {
+    async recall(options: AuthBasicOptions = {}): Promise<string | undefined> {
         return this._beginAuthBlock(async () => {
             if (this.delegate?.recallPair) {
-                let pair = await this.delegate!.recallPair(this, opts);
+                let pair = await this.delegate!.recallPair(this, options);
                 if (pair) {
                     // Auth with pair
-                    return await this._login(pair);
+                    return await this._login(pair, options);
                 }
             } else if (isPlatformWeb()) {
-                return await this._recallSessionStorage(opts);
+                return await this._recallSessionStorage(options);
             }
             return undefined;
         });
@@ -199,11 +210,12 @@ export default class Auth {
     }
 
     async changePass(
-        creds: UserCredentials & { newPass: string }
+        creds: UserCredentials & { newPass: string },
+        options: AuthBasicOptions = {},
     ): Promise<string> {
         this.logout();
         return this._beginAuthBlock(async () => {
-            return await this._create(creds);
+            return await this._create(creds, options);
         });
     }
 
@@ -231,14 +243,21 @@ export default class Auth {
     private static _default: Auth | undefined;
 
     private async _login(
-        creds: UserCredentials | IGunCryptoKeyPair
+        creds: UserCredentials | IGunCryptoKeyPair,
+        options: AuthBasicOptions,
     ): Promise<string> {
+        const {
+            timeout = Auth.defaultTimeout,
+        } = options;
+        const loginCheckDelay = timeout && timeout > 1000
+            ? Math.min(LOGIN_CHECK_DELAY, timeout - 100)
+            : 0;
         let loginAction = new Promise<string>((resolve, reject) => {
             let resolveOnce: (typeof resolve) | undefined = resolve;
             let rejectOnce: (typeof reject) | undefined = reject;
 
             // Check for login ahead of time
-            let timer = setTimeout(() => {
+            let timer = loginCheckDelay && setTimeout(() => {
                 if (!resolveOnce) return;
                 let pub = this.pub();
                 if (pub) {
@@ -247,7 +266,7 @@ export default class Auth {
                     resolveOnce = undefined;
                     rejectOnce = undefined;
                 }
-            }, LOGIN_CHECK_DELAY);
+            }, loginCheckDelay);
 
             // Begin login
             let cb = (ack: any) => {
@@ -272,7 +291,7 @@ export default class Auth {
                 }
                 resolveOnce = undefined;
                 rejectOnce = undefined;
-                clearTimeout(timer);
+                timer && clearTimeout(timer);
             };
 
             let user: any = this.gun.user();
@@ -293,20 +312,28 @@ export default class Auth {
             }
         });
 
-        return Promise.race([
+        let promises = [
             loginAction,
-            this.onAuth()
-        ]);
+            this.onAuth(),
+        ];
+        if (timeout && timeout > 0) {
+            promises.push(errorAfter(timeout, new TimeoutError()));
+        }
+        return Promise.race(promises);
     }
 
-    private async _recallSessionStorage(opts: AuthBasicOptions): Promise<string | undefined> {
+    private async _recallSessionStorage(
+        options: AuthBasicOptions
+    ): Promise<string | undefined> {
+        const {
+            timeout = Auth.defaultTimeout,
+        } = options;
         let recallAction = new Promise<string | undefined>((resolve, reject) => {
             let resolveOnce: (typeof resolve) | undefined = resolve;
             let rejectOnce: (typeof reject) | undefined = reject;
 
-            let { timeout } = opts;
             let timer: any;
-            if (timeout) {
+            if (timeout && timeout > 0) {
                 timer = setTimeout(() => {
                     if (!resolveOnce) return;
                     let pub = this.pub();
@@ -342,7 +369,7 @@ export default class Auth {
                 }
                 resolveOnce = undefined;
                 rejectOnce = undefined;
-                clearTimeout(timer);
+                timer && clearTimeout(timer);
             });
         });
 
@@ -353,8 +380,12 @@ export default class Auth {
     }
 
     private async _create(
-        { alias, pass, newPass }: UserCredentials & { newPass?: string }
+        { alias, pass, newPass }: UserCredentials & { newPass?: string },
+        options: AuthBasicOptions,
     ): Promise<string> {
+        const {
+            timeout = Auth.defaultTimeout,
+        } = options;
         let createAction = new Promise<string>((resolve, reject) => {
             let options: any = {};
             if (newPass) {
@@ -381,10 +412,14 @@ export default class Auth {
             }, options);
         });
 
-        return Promise.race([
+        let promises = [
             createAction,
-            this.onAuth()
-        ]);
+            this.onAuth(),
+        ];
+        if (timeout && timeout > 0) {
+            promises.push(errorAfter(timeout, new TimeoutError()));
+        }
+        return Promise.race(promises);
     }
 
     private async _onAuth(): Promise<string> {

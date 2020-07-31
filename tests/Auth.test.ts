@@ -1,7 +1,7 @@
 import Auth, { UserCredentials } from '../src/Auth';
 import { IGunChainReference } from 'gun/types/chain';
 import { TEST_GUN_OPTIONS } from '../src/const';
-import { InvalidCredentials, UserExists, AuthError } from '../src/errors';
+import { InvalidCredentials, UserExists, AuthError, TimeoutError } from '../src/errors';
 import Gun from 'gun';
 import { v4 as uuidv4 } from 'uuid';
 import { IGunCryptoKeyPair } from 'gun/types/types';
@@ -110,6 +110,16 @@ describe('Auth', () => {
                 expect(errors.length).toBe(1);
                 expect(errors[0]).toBeInstanceOf(AuthError);
             });
+
+            it('should timeout when creating a user', async () => {
+                let caughtError: Error | undefined;
+                try {
+                    await auth.create(creds, { timeout: 1 });
+                } catch (error) {
+                    caughtError = error;
+                }
+                expect(caughtError).toBeInstanceOf(TimeoutError);
+            });
         });
 
         describe('login', () => {
@@ -165,6 +175,16 @@ describe('Auth', () => {
                 }
                 expect(user).toBeFalsy();
                 expect(loginError).toBeInstanceOf(InvalidCredentials);
+            });
+
+            it('should timeout when logging in a user', async () => {
+                let caughtError: Error | undefined;
+                try {
+                    await auth.login(creds, { timeout: 1 });
+                } catch (error) {
+                    caughtError = error;
+                }
+                expect(caughtError).toBeInstanceOf(TimeoutError);
             });
         });
 

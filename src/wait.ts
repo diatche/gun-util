@@ -61,6 +61,6 @@ export async function errorAfter<T = void>(ms: number, error: Error): Promise<T>
 export async function timeoutAfter<T = any>(promise: Promise<T>, ms: number, error?: Error): Promise<T> {
     return Promise.race([
         promise,
-        errorAfter<T>(ms, error || new TimeoutError('The opration timed out')),
+        errorAfter<T>(ms, error || new TimeoutError()),
     ]);
 }
