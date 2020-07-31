@@ -14,6 +14,7 @@ Changes on `develop` will be listed here.
 - Added `Auth#exists()`, which checks if a user with an alias exists.
 - You can wait for a user operation to finish using `Auth#join()`.
 - Added an optional timeout to `waitForData()`.
+- Added `closedFilter()` which converts an open filter to a closed filter.
 
 ### Bug Fixes
 

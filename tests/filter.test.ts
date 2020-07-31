@@ -6,7 +6,8 @@ import {
     mapValueRange,
     filteredIndexRange,
     isInRange,
-    isValueRangeEmpty
+    isValueRangeEmpty,
+    closedFilter,
 } from '../src/filter';
 import moment from 'moment';
 
@@ -337,5 +338,41 @@ describe('mapValueRange', () => {
             startClosed: true,
             endClosed: false,
         } as ValueRange<string>);
+    });
+});
+
+describe('closedFilter', () => {
+
+    it('should return a closed filter with an open filter', () => {
+        expect(closedFilter({
+            lt: 'a',
+            gt: 'b',
+            foo: 'bar',
+        })).toEqual({
+            lte: 'a',
+            gte: 'b',
+            foo: 'bar',
+        });
+    });
+
+    it('should handle empty', () => {
+        expect(closedFilter({})).toEqual({});
+    });
+
+    it('should ignore undefined', () => {
+        expect(closedFilter({
+            lt: undefined,
+            gt: undefined,
+        })).toEqual({});
+    });
+
+    it('should keep closed ranges', () => {
+        expect(closedFilter({
+            lte: 'a',
+            gte: 'b',
+        })).toEqual({
+            lte: 'a',
+            gte: 'b',
+        });
     });
 });
