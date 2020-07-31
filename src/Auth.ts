@@ -242,6 +242,8 @@ export default class Auth {
 
     /**
      * Login a previously saved user.
+     * 
+     * Set the receiver's delegate to be able to customise behaviour.
      */
     async recall(options: AuthBasicOptions = {}): Promise<string | undefined> {
         if (this.delegate?.recallPair) {
@@ -397,13 +399,11 @@ export default class Auth {
             existsTimeout = Auth.defaultExistsTimeout,
         } = options;
 
-        if (creds.alias) {
-            // Sync user before login in
-            await this.exists(
-                { alias: creds.alias },
-                { timeout: existsTimeout },
-            );
-        }
+        // It's been observed that when existance of a
+        // user is checked using `gun.get('~@' + alias)`,
+        // gun.user().auth() fails immediately with an invalid
+        // credentials error.
+        // Use `existsTimeout` with `gun.user().auth()` instead.
 
         const loginCheckDelay = timeout && timeout > 1000
             ? Math.min(LOGIN_CHECK_DELAY, timeout - 100)
@@ -456,15 +456,27 @@ export default class Auth {
                 pass: '',
                 ...creds
             };
+            let gunOpts = existsTimeout && existsTimeout > 0 ? {
+                wait: existsTimeout
+            } : undefined;
             if (alias && pass) {
                 // Supported with Gun v0.2020.520 and prior.
-                user.auth(alias, pass, cb);
+                user.auth(
+                    alias,
+                    pass,
+                    cb,
+                    gunOpts,
+                );
             } else {
                 // Supported after Gun v0.2020.520.
                 if (!isGunAuthPairSupported(this.gun)) {
                     throw new GunError('This version of Gun only supports auth with alias and pass');
                 }
-                user.auth(creds, cb);
+                user.auth(
+                    creds,
+                    cb,
+                    gunOpts,
+                );
             }
         });
 
