@@ -6,6 +6,9 @@ import Gun from 'gun';
 import { v4 as uuidv4 } from 'uuid';
 import Auth from '../src/Auth';
 
+Auth.defaultTimeout = 20000;
+Auth.defaultExistsTimeout = 500;
+
 interface State {
     [key: string]: UserState;
 }
@@ -35,11 +38,13 @@ describe('encryption', () => {
     });
 
     beforeEach(async () => {
+        await auth.join();
         // Use a clean node on every run
         runId = 'test-' + uuidv4();
     });
 
-    afterEach(() => {
+    afterEach(async () => {
+        await auth.join();
         auth.logout();
     });
 

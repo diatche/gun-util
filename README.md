@@ -248,15 +248,78 @@ Have a look at the [examples folder](examples/).
 
 Convenience methods for creating an authenticating a Gun user.
 
+This wrapper provides greater consistency by handling a couple of edge cases, namely:
+
+- In some Gun versions, callbacks are not fired consistently. This wrapper listens to both local and global `auth` and returns in both cases.
+- When trying to log in to an existing user on an unsynced gun instance, you may get `User does not exist!` errors. This wrapper syncs the necessary data before attempting to login.
+- Another more troublesome pitfall with unsynced gun instances is if you try to create a user with an alias which has already been user on another Gun instance, you will get different key pairs and will not be able to sync the data of that user between those Gun instances. This wrapper takes extra precautions before creating a user (no guarantees though, it all depends on how long you want to wait for the sync to happen).
+
+See also the **Notes** section below.
+
+**Basics:**
+
+```javascript
+let gun = new Gun()
+let auth = new Auth(gun);
+
+await auth.create({
+    alias: 'alice',
+    pass: 'secret'
+});
+
+auth.logout();
+
+await auth.login({
+    alias: 'alice',
+    pass: 'secret'
+});
+```
+
+**Watching for authentication:**
+
+```javascript
+// With callback
+auth.on(() => {
+    let publicKey = auth.user();
+    let pair = auth.pair();
+});
+
+// With promise
+let publicKey = await auth.on();
+```
+
+**Custom authentication recall:**
+
+```javascript
+auth.delegate = {
+    storePair: async (pair, auth) => {
+        await saveSecret(pair);
+    },
+    recallPair: async (auth, opts) => {
+        await loadSecret(pair);
+    },
+}
+```
+
+**Getting a user's public key with an alias:**
+
+```javascript
+let publicKey = await auth.getPub({ alias: 'alice' });
+```
+
 Have a look at the [examples folder](examples/).
 
 #### Notes
 
-- It's been observed that multiple `gun.on('auth', cb)` listeners don't work. Since the `Auth` creates an `auth` listener, it relies on the user to not create this themselves. A way of managing this better is in the works.
+- It's been observed that multiple `gun.on('auth', cb)`. If you use your own `gun.on('auth', cb)` listener, call `Auth#did()` inside of it.
 
 ### Other Methods
 
-- `waitForData(ref, filter?)`
+- `waitForData(ref, { filter?, timeout? })`
   - Returns a promise, which resolves when data arrives at a node reference.
 - `delay(ms, passthrough?)`
   - Promisified `setTimeout()`.
+- `errorAfter(ms, error)`
+  - Throw error after `ms` interval.
+- `timeoutAfter(promise, ms, error?)`
+  - If the promise does not resolve (or error) within `ms` interval, throws a the specified `error`. If no error is specified, uses a `TimeoutError` instead.
