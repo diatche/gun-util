@@ -1,6 +1,6 @@
 {
   "name": "gun-util",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "Convenience and utility methods for GunDB",
   "main": "dist/index.js",
   "module": "dist/index.mjs",

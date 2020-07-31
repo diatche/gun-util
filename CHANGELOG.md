@@ -4,6 +4,8 @@
 
 Changes on `develop` will be listed here.
 
+## 0.0.10
+
 ### Features
 
 - When attempting to start another login while another is in progress, `Auth` throws a `MultipleAuthError` instead of `AuthError`.
