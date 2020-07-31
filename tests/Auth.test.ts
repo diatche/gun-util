@@ -12,6 +12,7 @@ let auth: Auth;
 let creds: UserCredentials;
 
 Auth.defaultTimeout = 20000;
+Auth.defaultExistsTimeout = 500;
 
 const newCreds = () => {
     return {
@@ -138,7 +139,7 @@ describe('Auth', () => {
 
             it('should log in an existing user with correct credentials', async () => {
                 let user = await auth.login(creds);
-                expect(user).toBeTruthy();
+                expect(user).toEqual(pair.pub);
             });
 
             it('should log in an existing user with pair', async () => {

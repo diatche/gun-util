@@ -35,11 +35,13 @@ describe('encryption', () => {
     });
 
     beforeEach(async () => {
+        await auth.join();
         // Use a clean node on every run
         runId = 'test-' + uuidv4();
     });
 
-    afterEach(() => {
+    afterEach(async () => {
+        await auth.join();
         auth.logout();
     });
 

@@ -34,16 +34,21 @@ export async function waitForData<T = any>(
     if (typeof filter !== 'undefined' && (typeof filter !== 'function' || filter.length === 0)) {
         throw new Error('Invalid filter');
     }
+    let sub: any;
     let listener = new Promise<T>((resolve, reject) => {
         if (!filter) {
             filter = (data: T) => typeof data !== 'undefined';
         }
-        (ref as any).on((data: T, key: string, at: any, ev: any) => {
+        sub = (ref as any).on((data: T, key: string, at: any, ev: any) => {
+            sub = ev;
             if (filter!(data)) {
-                ev?.off?.();
+                sub?.off?.();
+                sub = undefined;
                 resolve(data);
             }
         });
+    }).finally(() => {
+        sub?.off?.();
     });
     if (timeout && timeout > 0) {
         return await timeoutAfter(listener, timeout, timeoutError);
@@ -58,8 +63,11 @@ export async function waitForData<T = any>(
  * @param passthrough 
  */
 export function delay<T = any>(ms: number, passthrough?: T): Promise<T> {
+    let timer: any;
     return new Promise<T>((resolve, reject) => {
-        setTimeout(() => resolve(passthrough), ms);
+        timer = setTimeout(() => resolve(passthrough), ms);
+    }).finally(() => {
+        timer && clearTimeout(timer);
     });
 }
 

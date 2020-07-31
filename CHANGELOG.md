@@ -15,6 +15,10 @@ Changes on `develop` will be listed here.
 - You can wait for a user operation to finish using `Auth#join()`.
 - Added an optional timeout to `waitForData()`.
 
+### Bug Fixes
+
+- Fixed unsubscribe on promise cancel in `waitForData()` and `delay()`.
+
 ### Breaking Changes
 
 - Renamed `Auth#onAuth()` to `Auth#on()`.
