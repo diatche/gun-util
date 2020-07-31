@@ -125,7 +125,7 @@ export default class Auth {
             } catch (error) {
                 if (error instanceof MultipleAuthError) {
                     // Wait for internal work and try again
-                    await this._gunUserAction;
+                    await this._joinInternal();
                     return await this._login(creds, options);
                 }
                 throw error;
@@ -148,7 +148,7 @@ export default class Auth {
             } catch (error) {
                 if (error instanceof MultipleAuthError) {
                     // Wait for internal work and try again
-                    await this._gunUserAction;
+                    await this._joinInternal();
                     return await this._create(creds, options);
                 }
                 throw error;
@@ -173,7 +173,7 @@ export default class Auth {
                 } catch (error) {
                     if (error instanceof MultipleAuthError) {
                         // Wait for internal work and try again
-                        await this._gunUserAction;
+                        await this._joinInternal();
                         return await this._recallSessionStorage(options);
                     }
                     throw error;
@@ -189,7 +189,7 @@ export default class Auth {
      * If a user is already authenticated, resolves
      * immediately.
      */
-    async onAuth(): Promise<string> {
+    async onAuth(cb?: () => void): Promise<string> {
         // Allow multiple subscriptions to onAuth,
         // so share the promise.
         let pub = this.pub();
@@ -241,7 +241,7 @@ export default class Auth {
             } catch (error) {
                 if (error instanceof MultipleAuthError) {
                     // Wait for internal work and try again
-                    await this._gunUserAction;
+                    await this._joinInternal();
                     return await this._delete(creds, options);
                 }
                 throw error;
@@ -257,11 +257,13 @@ export default class Auth {
         let stop = false;
 
         let joins = (async () => {
-            await this._gunUserAction;
+            await this._joinInternal();
             while (!stop && this._authBlock) {
-                await this._authBlock;
+                try {
+                    await this._authBlock;
+                } catch (error) {}
             }
-            await this._gunUserAction;
+            await this._joinInternal();
         })();
 
         if (timeout) {
@@ -289,6 +291,15 @@ export default class Auth {
     private _subscribedToAuth = false;
 
     private static _default: Auth | undefined;
+
+    private async _joinInternal(): Promise<void> {
+        if (!this._gunUserAction) {
+            return;
+        }
+        try {
+            await this._gunUserAction;
+        } catch (error) {}
+    }
 
     private async _login(
         creds: UserCredentials | IGunCryptoKeyPair,
@@ -555,6 +566,10 @@ export default class Auth {
 
     private static _parseGunError(error: string, defaultClass = GunError): GunError {
         switch (error) {
+            case 'User already created!':
+                return new UserExists(error);
+            case 'Wrong user or password.':
+                return new InvalidCredentials(error);
             case 'User is already being created or authenticated!':
                 return new MultipleAuthError(error);
             default:
