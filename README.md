@@ -270,7 +270,27 @@ await auth.login({
 **Watching for authentication:**
 
 ```javascript
-auth.on
+// With callback
+auth.on(() => {
+    let publicKey = auth.user();
+    let pair = auth.pair();
+});
+
+// With promise
+let publicKey = await auth.on();
+```
+
+**Custom authentication recall:**
+
+```javascript
+auth.delegate = {
+    storePair: async (pair, auth) => {
+        await saveSecret(pair);
+    },
+    recallPair: async (auth, opts) => {
+        await loadSecret(pair);
+    },
+}
 ```
 
 Have a look at the [examples folder](examples/).
