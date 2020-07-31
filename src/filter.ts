@@ -177,3 +177,27 @@ export function mapValueRange<U, V>(range: ValueRange<U>, map: (v: U) => V): Val
         endClosed: range.endClosed,
     };
 };
+
+/**
+ * Create a closed filter from an open filter,
+ * preserving any other properties on the object.
+ **/
+export function closedFilter<T>(filter: Filter<T> & { [x: string] : any }): Filter<T> & { [x: string] : any } {
+    // Extract filter
+    let {
+        gt, gte, lt, lte,
+        ...otherOptions
+    } = filter;
+    let start = gt || gte;
+    let end = lt || lte;
+
+    // Reapply filter
+    let closedFilter = otherOptions;
+    if (typeof start !== 'undefined') {
+        closedFilter.gte = start;
+    }
+    if (typeof end !== 'undefined') {
+        closedFilter.lte = end;
+    }
+    return closedFilter;
+}

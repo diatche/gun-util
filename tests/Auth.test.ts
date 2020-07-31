@@ -1,7 +1,7 @@
 import Auth, { UserCredentials } from '../src/Auth';
 import { IGunChainReference } from 'gun/types/chain';
 import { TEST_GUN_OPTIONS } from '../src/const';
-import { InvalidCredentials, UserExists, AuthError } from '../src/errors';
+import { InvalidCredentials, UserExists, AuthError, TimeoutError } from '../src/errors';
 import Gun from 'gun';
 import { v4 as uuidv4 } from 'uuid';
 import { IGunCryptoKeyPair } from 'gun/types/types';
@@ -10,6 +10,9 @@ import { isGunAuthPairSupported } from '../src/support';
 let gun: IGunChainReference;
 let auth: Auth;
 let creds: UserCredentials;
+
+Auth.defaultTimeout = 20000;
+Auth.defaultExistsTimeout = 500;
 
 const newCreds = () => {
     return {
@@ -65,12 +68,14 @@ describe('Auth', () => {
             auth = new Auth(gun);
         });
 
-        beforeEach(() => {
+        beforeEach(async () => {
+            await auth.join();
             // New credentials on each run
             creds = newCreds();
         });
 
-        afterEach(() => {
+        afterEach(async () => {
+            await auth.join();
             auth.logout();
         });
 
@@ -109,6 +114,16 @@ describe('Auth', () => {
                 expect(errors.length).toBe(1);
                 expect(errors[0]).toBeInstanceOf(AuthError);
             });
+
+            it('should timeout when creating a user', async () => {
+                let caughtError: Error | undefined;
+                try {
+                    await auth.create(creds, { timeout: 1 });
+                } catch (error) {
+                    caughtError = error;
+                }
+                expect(caughtError).toBeInstanceOf(TimeoutError);
+            });
         });
 
         describe('login', () => {
@@ -124,7 +139,7 @@ describe('Auth', () => {
 
             it('should log in an existing user with correct credentials', async () => {
                 let user = await auth.login(creds);
-                expect(user).toBeTruthy();
+                expect(user).toEqual(pair.pub);
             });
 
             it('should log in an existing user with pair', async () => {
@@ -165,9 +180,19 @@ describe('Auth', () => {
                 expect(user).toBeFalsy();
                 expect(loginError).toBeInstanceOf(InvalidCredentials);
             });
+
+            it('should timeout when logging in a user', async () => {
+                let caughtError: Error | undefined;
+                try {
+                    await auth.login(creds, { timeout: 1 });
+                } catch (error) {
+                    caughtError = error;
+                }
+                expect(caughtError).toBeInstanceOf(TimeoutError);
+            });
         });
 
-        describe('onAuth', () => {
+        describe('on', () => {
 
             beforeEach(async () => {
                 await auth.create(creds);
@@ -175,28 +200,41 @@ describe('Auth', () => {
             });
 
             it('should resolve all listeneres when user created', async () => {
+                let didCb1 = false;
+                let didCb2 = false;
+
                 let [pub1, pub2, user] = await Promise.all([
-                    auth.onAuth(),
-                    auth.onAuth(),
+                    auth.on(() => { didCb1 = true; }),
+                    auth.on(() => { didCb2 = true; }),
                     auth.create(newCreds())
                 ]);
+
                 expect(pub1).toEqual(user);
                 expect(pub2).toEqual(user);
+                expect(didCb1).toBeTruthy();
+                expect(didCb2).toBeTruthy();
             });
 
             it('should resolve all listeneres when logged in', async () => {
+                let didCb1 = false;
+                let didCb2 = false;
+
                 let [pub1, pub2, user] = await Promise.all([
-                    auth.onAuth(),
-                    auth.onAuth(),
+                    auth.on(() => { didCb1 = true; }),
+                    auth.on(() => { didCb2 = true; }),
                     auth.login(creds)
                 ]);
+
                 expect(pub1).toEqual(user);
                 expect(pub2).toEqual(user);
+                expect(didCb1).toBeTruthy();
+                expect(didCb2).toBeTruthy();
             });
 
             it('should resolve when logged in after a failed attempt', async () => {
                 // Subscribe to auth
-                let onAuth = auth.onAuth();
+                let didCb = false;
+                let on = auth.on(() => { didCb = true; });
                 let error: any;
                 try {
                     await auth.login({ ...creds, pass: 'x' });
@@ -204,11 +242,13 @@ describe('Auth', () => {
                     error = e;
                 }
                 expect(error).toBeTruthy();
+                expect(didCb).toBeFalsy();
                 let [pub1, user] = await Promise.all([
-                    onAuth,
+                    on,
                     auth.login(creds)
                 ]);
                 expect(pub1).toEqual(user);
+                expect(didCb).toBeTruthy();
             });
 
             it('should resolve when logged in with different user', async () => {
@@ -219,24 +259,58 @@ describe('Auth', () => {
                 let user1 = await auth.login(creds);
                 auth.logout();
 
+                let didCb = false;
                 let [pub2, user2] = await Promise.all([
-                    auth.onAuth(),
+                    auth.on(() => { didCb = true; }),
                     auth.login(creds2)
                 ]);
                 expect(pub2).toEqual(user2);
                 expect(user2).not.toEqual(user1);
+                expect(didCb).toBeTruthy();
             });
 
             it('should resolve when logged in with Gun methods', done => {
                 let pub = '';
-                auth.onAuth().then(pub1 => {
+                let didCb = false;
+                auth.on(() => { didCb = true; }).then(pub1 => {
                     expect(pub1).toEqual(pub);
+                    expect(didCb).toBeTruthy();
                     done();
                 });
                 gun.user().auth(creds.alias, creds.pass, ack => {
                     pub = (ack as any).sea.pub;
                     expect(pub).toBeTruthy();
                 });
+            });
+        });
+
+        describe('getPub', () => {
+
+            it('should not return a public for a non existing user', async () => {
+                let pub = await auth.getPub(creds, { timeout: 1000 });
+                expect(pub).toBeFalsy();
+            });
+
+            it ('should return a public key for an existing user', async () => {
+                let pub1 = await auth.create(creds);
+                auth.logout();
+                let pub2 = await auth.getPub(creds, { timeout: 1000 });
+                expect(pub2).toBe(pub1);
+            });
+        });
+
+        describe('exists', () => {
+
+            it('should return false for a non existing user', async () => {
+                let exists = await auth.exists(creds, { timeout: 1000 });
+                expect(exists).toBeFalsy();
+            });
+
+            it ('should return true for an existing user', async () => {
+                await auth.create(creds);
+                auth.logout();
+                let exists = await auth.exists(creds, { timeout: 1000 });
+                expect(exists).toBeTruthy();
             });
         });
 
@@ -276,6 +350,7 @@ describe('Auth', () => {
             });
 
             it.skip('should change credentials and login', async () => {
+                // Re-enable when fixed in Gun
                 let pub = await auth.login(creds);
                 let newPub = await auth.changePass({ ...creds, newPass: 'roo' });
 
@@ -286,6 +361,32 @@ describe('Auth', () => {
                 auth.logout();
                 let againPub = await auth.login({ ...creds, pass: 'roo' });
                 expect(againPub).toEqual(newPub);
+            });
+        });
+
+        describe('delete', () => {
+
+            let pair: IGunCryptoKeyPair;
+
+            beforeEach(async () => {
+                await auth.create(creds);
+                pair = auth.pair()!;
+                expect(pair).toBeTruthy();
+            });
+
+            it.skip('should delete in an existing user with correct credentials', async () => {
+                // Re-enable when fixed in Gun
+                await auth.delete(creds);
+                expect(auth.pair()).toBeFalsy();
+                let user = '';
+                let caughtError: Error | undefined;
+                try {
+                    user = await auth.login(creds);
+                } catch(error) {
+                    caughtError = error;
+                }
+                expect(user).toBeFalsy();
+                expect(caughtError).toBeInstanceOf(InvalidCredentials);
             });
         });
 

@@ -1,6 +1,7 @@
 import {
     waitForData,
-    delay
+    delay,
+    errorAfter,
 } from '../src/wait';
 import { TEST_GUN_OPTIONS } from '../src/const';
 import { IGunChainReference } from 'gun/types/chain';
@@ -62,7 +63,9 @@ describe('wait with Gun', () => {
 
         it('should return on filtered data', async () => {
             let x = runRef.get('x');
-            let promise = waitForData(x, data => data === 'foo');
+            let promise = waitForData(x, {
+                filter: data => data === 'foo'
+            });
             let result: any;
             promise.then(data => {
                 result = data;
@@ -72,6 +75,35 @@ describe('wait with Gun', () => {
             x.put('foo' as never);
             await promise;
             expect(result).toStrictEqual('foo');
+        });
+    });
+
+    describe('errorAfter', () => {
+
+        it('should throw an error when the interval has passed', async () => {
+            let tStart = moment();
+            let error: Error | undefined;
+            let expectedError = new Error('test');
+            try {
+                await errorAfter(50, expectedError);
+            } catch (err) {
+                error = err;
+            }
+            let tEnd = moment();
+            expect(error).toStrictEqual(expectedError);
+            expect(tEnd.valueOf() - tStart.valueOf()).toBeGreaterThanOrEqual(50);
+        });
+
+        it('should not throw when cancelled', async () => {
+            let tStart = moment();
+            let val = await Promise.race([
+                delay(10, 'a'),
+                errorAfter(50, new Error('test')),
+            ]);
+            expect(val).toBe('a');
+            await delay(50);
+            let tEnd = moment();
+            expect(tEnd.valueOf() - tStart.valueOf()).toBeGreaterThanOrEqual(10);
         });
     });
 });

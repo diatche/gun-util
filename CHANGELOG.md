@@ -4,6 +4,29 @@
 
 Changes on `develop` will be listed here.
 
+## 0.0.10
+
+### Features
+
+- When attempting to start another login while another is in progress, `Auth` throws a `MultipleAuthError` instead of `AuthError`.
+- Added `errorAfter()` and `timeoutAfter()` utility methods.
+- Added `Auth#did()` method to allow using your own `gun.on('auth', cb)` listener.
+- You can pass a callback to `Auth#on`.
+- Added `Auth#getPub()`, which finds the public key corresponding to a user alias.
+- Added `Auth#exists()`, which checks if a user with an alias exists.
+- You can wait for a user operation to finish using `Auth#join()`.
+- Added an optional timeout to `waitForData()`.
+- Added `closedFilter()` which converts an open filter to a closed filter.
+
+### Bug Fixes
+
+- Fixed unsubscribe on promise cancel in `waitForData()` and `delay()`.
+
+### Breaking Changes
+
+- Renamed `Auth#onAuth()` to `Auth#on()`.
+- `waitForData()` now takes an options object as the second parameter containing `filter` instead of the `filter` itself.
+
 ## 0.0.9
 
 ### Features
