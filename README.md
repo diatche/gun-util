@@ -254,7 +254,7 @@ This wrapper provides greater consistency by handling a couple of edge cases, na
 - When trying to log in to an existing user on an unsynced gun instance, you may get `User does not exist!` errors. This wrapper syncs the necessary data before attempting to login.
 - Another more troublesome pitfall with unsynced gun instances is if you try to create a user with an alias which has already been user on another Gun instance, you will get different key pairs and will not be able to sync the data of that user between those Gun instances. This wrapper takes extra precautions before creating a user (no guarantees though, it all depends on how long you want to wait for the sync to happen).
 
-See also the **Notes** section below.
+See also the [Notes](#Notes-1) section below.
 
 **Basics:**
 
@@ -311,7 +311,10 @@ Have a look at the [examples folder](examples/).
 
 #### Notes
 
-- It's been observed that multiple `gun.on('auth', cb)`. If you use your own `gun.on('auth', cb)` listener, call `Auth#did()` inside of it.
+- It's been observed that multiple `gun.on('auth', cb)` do not work. If you use your own `gun.on('auth', cb)` listener, call `Auth#did()` inside of it. Or use `Auth#on()` instead.
+- It's been observed that when `Auth#exists()`, `Auth#getPub()` or `gun.get('~@' + alias)` is used, `gun.user().auth()` stops working and fails immediately with an invalid credentials error.
+  - `Auth#login()` uses `gun.user().auth()` with `{ wait: <timeout> }` instead.
+  - Avoid using `Auth#exists()`, `Auth#getPub()` and `gun.get('~@' + alias)` before logging in if this is an issue with your Gun version.
 
 ### Other Methods
 
