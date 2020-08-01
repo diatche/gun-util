@@ -4,6 +4,12 @@
 
 Changes on `develop` will be listed here.
 
+## 0.0.11
+
+### Bug Fixes
+
+- Fixed `Auth#login()`, which has stopped working since 0.0.10 with new Gun instances.
+
 ## 0.0.10
 
 ### Features
