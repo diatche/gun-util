@@ -4,6 +4,9 @@
 
 Changes on `develop` will be listed here.
 
+## 0.0.12
+14 Aug 2020
+
 ### Features
 
 - Added `subscribe()` method to subscribe to `on()` events, returning a subscription object.
