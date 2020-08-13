@@ -10,6 +10,8 @@ import {
     isInRange,
     mapValueRange,
 } from "./filter";
+import { IGunSubscription } from "./types";
+import { subscribe } from "./subscription";
 
 export type DateUnit = 'year' | 'month' | 'day' | 'hour' | 'minute' | 'second' | 'millisecond';
 
@@ -25,21 +27,13 @@ const ZERO_DATE = moment.utc().startOf('year').set('year', 1);
 
 type DateComponentsUnsafe = { [res: string]: number };
 
-/**
- * Provides a way of managing a subscription.
- */
-export interface Subscription {
-    /** Unsubscribe from events. */
-    off: () => void;
-}
-
 export type DateEventOptions = Filter<DateParsable>;
 
 export type DateEventCallback<T> = (
     data: T,
     date: Moment,
     at: any,
-    sub: Subscription
+    sub: IGunSubscription
 ) => void;
 
 /**
@@ -106,9 +100,9 @@ export default class DateTree<T = any> {
      * 
      * @param cb 
      * @param opts 
-     * @returns A {@link Subscription} object.
+     * @returns A {@link IGunSubscription} object.
      */
-    on(cb: DateEventCallback<T>, opts: DateEventOptions = {}): Subscription {
+    on(cb: DateEventCallback<T>, opts: DateEventOptions = {}): IGunSubscription {
         // TODO: add updates support
         let range = mapValueRange(
             rangeWithFilter(opts),
@@ -127,10 +121,10 @@ export default class DateTree<T = any> {
             ? DateTree.downsampleDateComponents(startComps, commonUnit)
             : {};
         let mapTable: any = {};
-        let subTable: { [key: string]: Subscription } = {};
+        let subTable: { [key: string]: IGunSubscription } = {};
         let didUnsub = false;
 
-        let commonSub: Subscription = {
+        let commonSub: IGunSubscription = {
             off: () => {
                 if (didUnsub) {
                     return;
@@ -184,15 +178,7 @@ export default class DateTree<T = any> {
 
             let map = innerRef.map();
             mapTable[compKey] = map;
-            subTable[compKey] = map;
-            map.on((data: any, key: string, at: any, innerSub: Subscription) => {
-                if (didUnsub) {
-                    return;
-                }
-                // Subscription method inside the callback seem to be
-                // more reliable.
-                subTable[compKey] = innerSub;
-
+            subTable[compKey] = subscribe(map, (data, key, at, innerSub) => {
                 let value = DateTree.decodeDateComponent(key);
                 let innerComps = { ...comps, [innerUnit!]: value };
                 if (innerUnit === this.resolution) {
@@ -215,7 +201,7 @@ export default class DateTree<T = any> {
         return commonSub;
     }
 
-    private _onAny(cb: DateEventCallback<T>): Subscription {
+    private _onAny(cb: DateEventCallback<T>): IGunSubscription {
         // TODO: opts.updates = true not working as expected
         let units = this._allUnits();
         let ref = this.root.map();
@@ -224,7 +210,7 @@ export default class DateTree<T = any> {
             ref = ref.map();
         }
 
-        return (ref as any).on((data: T, key: string, at: any, event: any) => {
+        return (ref as any).on((data: T, key: string, at: any, event: IGunSubscription) => {
             let date = this.getDate(at);
             cb(data, date, at, event);
         });
@@ -262,16 +248,16 @@ export default class DateTree<T = any> {
      * 
      * @returns An unsubscribe function
      */
-    changesAbout(date: DateParsable, callback: (comps: DateComponents, sub: Subscription) => void): Subscription {
+    changesAbout(date: DateParsable, callback: (comps: DateComponents, sub: IGunSubscription) => void): IGunSubscription {
         let m = DateTree.parseDate(date);
         let comps = DateTree.getDateComponents(m, this.resolution);
         let units = Object.keys(comps);
         let refs = this._getRefChain(comps);
         let refTable = _.zipObject(units, refs);
-        let subTable: { [unit: string]: Subscription } = {};
+        let subTable: { [unit: string]: IGunSubscription } = {};
         let didUnsub = false;
 
-        let commonSub: Subscription = {
+        let commonSub: IGunSubscription = {
             off: () => {
                 if (didUnsub) {
                     return;
@@ -285,17 +271,7 @@ export default class DateTree<T = any> {
         };
 
         _.forIn(refTable, (ref: any, unit: string) => {
-            ref.on((changes: any, outerKey: string, at: any, sub: Subscription) => {
-                // Received changes
-                if (didUnsub) {
-                    // Already unsubscribed
-                    return;
-                }
-
-                // Subscription method inside the callback seem to be
-                // more reliable.
-                subTable[unit] = sub;
-
+            subTable[unit] = subscribe(ref, (changes, outerKey, at, sub) => {
                 // Get data
                 _.forIn(changes, (val, key) => {
                     if (key === '_') {
@@ -322,7 +298,6 @@ export default class DateTree<T = any> {
                     }
                 });
             }, { change: true });
-            subTable[unit] = ref;
         });
         return commonSub;
     }

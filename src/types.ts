@@ -38,15 +38,27 @@ export interface IGunFilter {
     '-'?: 0 | 1;
 }
 
-export type ExpandedCallback<T = any> = (
+/**
+ * Provides a way of managing a single subscription.
+ */
+export interface IGunSubscription {
+    /**
+     * Unsubscribe from events.
+     * Does not impact other subscriptions.
+     **/
+    off: () => void;
+}
+
+export interface IGunSubscriptionOptions {
+    change: boolean;
+};
+
+export type GunSubscriptionCallback<T = any> = (
     data: T,
     key: string,
     at: {
         /** The node's key. */
         get: string,
     },
-    event: {
-        /** Unsubscribe from events. */
-        off: () => void,
-    }
+    event: IGunSubscription,
 ) => void;

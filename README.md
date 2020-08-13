@@ -316,6 +316,34 @@ Have a look at the [examples folder](examples/).
 
 ### Other Methods
 
+- `subscribe(ref, callback, opt?)`
+  - Subscribe to a Gun node `ref` and return
+    a subscription.
+
+    Unsubscribes automatically on uncaught errors
+    inside the callback and rethrows.
+
+    **Why not just use `ref.on()`?**
+
+    Calling `ref.off()` unsubscribes all listeners,
+    not just the last one. This method provides a 
+    way to unsubscribe only a single listener inline.
+
+    For example:
+
+    ```javascript
+    let dataRef = gun.get('data');
+    let sub1 = subscribe(dataRef, data => console.log('sub1: ' + data));
+    let sub2 = subscribe(dataRef, data => console.log('sub2: ' + data));
+    dataRef.put('a');
+    sub1.off();
+    // sub2 is still active!
+    dataRef.put('b');
+    // Output:
+    // sub1: a
+    // sub2: a
+    // sub2: b
+    ```
 - `waitForData(ref, { filter?, timeout? })`
   - Returns a promise, which resolves when data arrives at a node reference.
 - `delay(ms, passthrough?)`
