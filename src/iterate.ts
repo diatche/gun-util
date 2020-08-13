@@ -7,6 +7,8 @@ import {
     isInRange,
     filteredIndexRange,
 } from "./filter";
+import { IGunSubscription } from "./types";
+import { subscribe } from "./subscription";
 
 const WAIT_DEFAULT = 99;
 const ASC_ORDER = 1;
@@ -152,7 +154,8 @@ async function * _fastIterateRecord<V = any, T = Record<any, V>>(
     // Use `on()` instead of `once()` to customize
     // the waiting interval. Also, `on()` is faster
     // with async data.
-    let sub: any = ref.map().on((data, key) => {
+    let sub: IGunSubscription | undefined;
+    sub = subscribe(ref.map(), (data, key) => {
         if (keysSeen.has(key)) {
             return;
         }
@@ -163,13 +166,6 @@ async function * _fastIterateRecord<V = any, T = Record<any, V>>(
             _resolve();
         }
     });
-
-    if (!sub) {
-        // There's nothing at this reference
-        // or it has been deleted.
-        cleanUp();
-        return;
-    }
 
     let timer: any = setInterval(() => {
         if (!timer) return;
