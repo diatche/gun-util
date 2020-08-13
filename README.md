@@ -45,7 +45,7 @@ Having large nodes is discouraged in a graph database like Gun. If you need to s
 For the exaples below, we will use the following setup:
 
 ```javascript
-import { DateTree } from 'date-util';
+import { DateTree } from 'gun-util';
 
 let gun = Gun();
 let treeRoot = gun.get('tree');
