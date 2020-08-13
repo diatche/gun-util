@@ -1,6 +1,6 @@
 const Gun = require('gun');
 const { v4: uuidv4 } = require('uuid');
-const { DateTree } = require('../dist');
+const { DateTree } = require('../dist'); /* Replace with 'gun-util' in your own project. */
 const moment = require('moment');
 
 let gun = Gun();

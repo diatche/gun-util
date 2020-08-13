@@ -1,5 +1,5 @@
 import Gun from 'gun';
-import { iterateItems } from '../dist/index.mjs';
+import { iterateItems } from '../dist/index.mjs'; /* Replace with 'gun-util' in your own project. */
 
 let gun = Gun();
 let list = gun.get('test-list');

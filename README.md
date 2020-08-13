@@ -10,8 +10,6 @@ Convenience and utility methods for [GunDB](https://github.com/amark/gun).
 
 Install using yarn with `yarn add gun-util` or npm `npm install gun-util`.
 
-*If you are using ES modules, you may need to import from `'date-util/dist/index.mjs'` for imports to work.*
-
 ## Documentation
 
 **Table of Contents:**
