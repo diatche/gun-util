@@ -1,6 +1,6 @@
 const Gun = require('gun');
 const { v4: uuidv4 } = require('uuid');
-const { Auth } = require('../dist');
+const { Auth } = require('../dist'); /* Replace with 'gun-util' in your own project. */
 
 let gun = Gun();
 let auth = Auth.default(gun);

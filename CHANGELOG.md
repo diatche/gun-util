@@ -4,6 +4,23 @@
 
 Changes on `develop` will be listed here.
 
+## 0.0.12
+14 Aug 2020
+
+### Features
+
+- Added `subscribe()` method to subscribe to `on()` events, returning a subscription object.
+
+### Bug Fixes
+
+- Fixed subscription bugs by only using `off()` inside of callbacks. See [issue](https://github.com/amark/gun/issues/713).
+
+### Breaking Changes
+
+- Renamed types:
+   - `Subscription` to `IGunSubscription`.
+   - `ExpandedCallback` to `GunSubscriptionCallback`.
+
 ## 0.0.11
 
 ### Bug Fixes

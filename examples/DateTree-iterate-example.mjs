@@ -1,6 +1,5 @@
 import Gun from 'gun';
-import moment from 'moment';
-import { DateTree } from '../dist/index.mjs';
+import { DateTree } from '../dist/index.mjs'; /* Replace with 'gun-util' in your own project. */
 
 let gun = Gun();
 let treeRoot = gun.get('test-tree-it');

@@ -10,8 +10,6 @@ Convenience and utility methods for [GunDB](https://github.com/amark/gun).
 
 Install using yarn with `yarn add gun-util` or npm `npm install gun-util`.
 
-*If you are using ES modules, you may need to import from `'date-util/dist/index.mjs'` for imports to work.*
-
 ## Documentation
 
 **Table of Contents:**
@@ -47,7 +45,7 @@ Having large nodes is discouraged in a graph database like Gun. If you need to s
 For the exaples below, we will use the following setup:
 
 ```javascript
-import { DateTree } from 'date-util';
+import { DateTree } from 'gun-util';
 
 let gun = Gun();
 let treeRoot = gun.get('tree');
@@ -318,6 +316,34 @@ Have a look at the [examples folder](examples/).
 
 ### Other Methods
 
+- `subscribe(ref, callback, opt?)`
+  - Subscribe to a Gun node `ref` and return
+    a subscription.
+
+    Unsubscribes automatically on uncaught errors
+    inside the callback and rethrows.
+
+    **Why not just use `ref.on()`?**
+
+    Calling `ref.off()` unsubscribes all listeners,
+    not just the last one. This method provides a 
+    way to unsubscribe only a single listener inline.
+
+    For example:
+
+    ```javascript
+    let dataRef = gun.get('data');
+    let sub1 = subscribe(dataRef, data => console.log('sub1: ' + data));
+    let sub2 = subscribe(dataRef, data => console.log('sub2: ' + data));
+    dataRef.put('a');
+    sub1.off();
+    // sub2 is still active!
+    dataRef.put('b');
+    // Output:
+    // sub1: a
+    // sub2: a
+    // sub2: b
+    ```
 - `waitForData(ref, { filter?, timeout? })`
   - Returns a promise, which resolves when data arrives at a node reference.
 - `delay(ms, passthrough?)`

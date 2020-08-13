@@ -2,7 +2,7 @@ const Gun = require('gun');
 const {
     encrypt,
     decrypt,
-} = require('../dist');
+} = require('../dist'); /* Replace with 'gun-util' in your own project. */
 
 (async () => {
     // You can use SEA pair or you can

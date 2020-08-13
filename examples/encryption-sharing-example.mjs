@@ -2,7 +2,7 @@ import Gun from 'gun';
 import {
     encrypt,
     decrypt,
-} from '../dist/index.mjs';
+} from '../dist/index.mjs'; /* Replace with 'gun-util' in your own project. */
 
 const SEA = Gun.SEA;
 
