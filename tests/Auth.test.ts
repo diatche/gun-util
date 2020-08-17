@@ -278,8 +278,8 @@ describe('Auth', () => {
                     expect(didCb).toBeTruthy();
                     done();
                 });
-                gun.user().auth(creds.alias, creds.pass, ack => {
-                    pub = (ack as any).sea.pub;
+                gun.user().auth(creds.alias, creds.pass, (ack: any) => {
+                    pub = ack.sea.pub;
                     expect(pub).toBeTruthy();
                 });
             });

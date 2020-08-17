@@ -1,4 +1,4 @@
-import { IGunConstructorOptions } from 'gun/types/options';
+import { IGunConstructorOptions } from './gun/types/options';
 
 export const GUN_PEERS: string[] = (process.env.GUN_PEERS || process.env.EXPO_GUN_PEERS || '')
     .split(',')

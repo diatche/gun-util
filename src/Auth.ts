@@ -517,7 +517,7 @@ export default class Auth {
             let gunOpts = {
                 sessionStorage: true,
             };
-            this.gun.user().recall(gunOpts, ack => {
+            this.gun.user().recall(gunOpts, (ack: any) => {
                 if (!resolveOnce || !rejectOnce) return;
 
                 if ('err' in ack) {
@@ -527,7 +527,7 @@ export default class Auth {
                         // Actually logged in.
                         // (This is Gun v0.2020.520 behaviour only)
                         resolveOnce(pub);
-                    } else if ((ack as any).lack) {
+                    } else if (ack.lack) {
                         // Timed out
                         rejectOnce(new TimeoutError(ack.err));
                     } else {
@@ -579,7 +579,7 @@ export default class Auth {
                 throw new MultipleAuthError('Should not be logged in when creating a user');
             }
             
-            this.gun.user().create(alias, pass, ack => {
+            this.gun.user().create(alias, pass, (ack: any) => {
                 if ('err' in ack) {
                     // Check for login anyway
                     let pub = this.pub();
@@ -614,7 +614,7 @@ export default class Auth {
             timeout = Auth.defaultTimeout,
         } = options;
         let deleteAction = new Promise<void>((resolve, reject) => {
-            this.gun.user().delete(alias, pass, ack => {
+            this.gun.user().delete(alias, pass, () => {
                 if (!this.pub()) {
                     resolve();
                 } else {
