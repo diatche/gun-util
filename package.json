@@ -39,7 +39,7 @@
     "moment": "^2.26.0"
   },
   "peerDependencies": {
-    "gun": ">=0.2019.930"
+    "gun": "0.2019.930 || >=0.2020.520"
   },
   "devDependencies": {
     "@types/gun": "^0.9.2",
