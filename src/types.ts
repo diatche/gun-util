@@ -1,5 +1,5 @@
-import { IGunChainReference } from "gun/types/chain";
-import * as GunTypes from "gun/types/types";
+import { IGunChainReference } from "./gun/types/chain";
+import * as GunTypes from "./gun/types/types";
 
 /** { '#': 'id' } */
 export interface IGunRef extends GunTypes.IGunRecordNodeRawBase {}

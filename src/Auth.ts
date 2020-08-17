@@ -1,6 +1,6 @@
-import { IGunChainReference } from "gun/types/chain";
+import { IGunChainReference } from "./gun/types/chain";
 import { InvalidCredentials, GunError, AuthError, UserExists, TimeoutError, MultipleAuthError } from "./errors";
-import { IGunCryptoKeyPair } from "gun/types/types";
+import { IGunCryptoKeyPair } from "./gun/types/types";
 import { isGunAuthPairSupported, isPlatformWeb, isGunInstance } from "./support";
 import { timeoutAfter, errorAfter, waitForData } from "./wait";
 

@@ -1,4 +1,4 @@
-import { IGunChainReference } from "gun/types/chain";
+import { IGunChainReference } from "./gun/types/chain";
 import _ from 'lodash';
 import moment, { Moment } from 'moment';
 import { IterateOptions, iterateRefs } from "./iterate";

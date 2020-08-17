@@ -1,4 +1,4 @@
-import { IGunChainReference } from "gun/types/chain";
+import { IGunChainReference } from "./gun/types/chain";
 import { TimeoutError } from "./errors";
 
 /**
