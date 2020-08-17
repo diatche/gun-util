@@ -26,7 +26,10 @@ jobs:
         node-version: ${{ matrix.node-version }}
     - run: yarn
     - run: yarn build
-    - run: yarn run coverage
+    - name: Run unit tests and generate coverage report
+      env:
+        GUN_PEERS: ${{ secrets.GUN_PEERS }}
+      run: yarn run coverage
     - name: Archive code coverage results
       uses: actions/upload-artifact@v1
       with:
