@@ -1,3 +1,7 @@
+/**
+ * Source: "amark/gun"
+ */
+
 import { IGunChainReference } from './chain';
 import { IGunConstructorOptions } from './options';
 import { IGunStaticNode } from './static/node';

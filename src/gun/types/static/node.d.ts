@@ -1,3 +1,7 @@
+/**
+ * Source: "amark/gun"
+ */
+
 import { IGunChainReference } from '../chain';
 export interface IGunStaticNode {
     /** Returns true if data is a gun node, otherwise false. */

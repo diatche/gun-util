@@ -1,3 +1,7 @@
+/**
+ * Source: "amark/gun"
+ */
+
 import { IGunChainReference } from './chain';
 export declare type ArrayOf<T> = T extends Array<infer U> ? U : never;
 /** Gun does not accept Array value, so we need extract to make types correct */

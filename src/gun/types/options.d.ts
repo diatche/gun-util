@@ -1,4 +1,8 @@
 /**
+ * Source: "amark/gun"
+ */
+
+/**
  * options['module name'] allows you to pass options to a 3rd party module.
  * Their project README will likely list the exposed options
  * https://github.com/amark/gun/wiki/Modules

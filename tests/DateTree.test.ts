@@ -1,13 +1,13 @@
 import './testSetup';
-import { IGunChainReference } from "gun/types/chain";
-import { TEST_GUN_OPTIONS } from "../src/const";
-import { delay } from "../src/wait";
-import Gun from "gun";
-import DateTree, { DateComponents } from "../src/DateTree";
-import moment from "moment";
-import _ from "lodash";
+import { IGunChainReference } from '../src/gun/types/chain';
+import { TEST_GUN_OPTIONS } from '../src/const';
+import { delay } from '../src/wait';
+import Gun from 'gun';
+import DateTree, { DateComponents } from '../src/DateTree';
+import moment from 'moment';
+import _ from 'lodash';
 import { v4 as uuidv4 } from 'uuid';
-import { iterateAll } from "../src/iterate";
+import { iterateAll } from '../src/iterate';
 
 let gun: IGunChainReference;
 let runId: string;

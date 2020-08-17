@@ -5,7 +5,7 @@ import {
     errorAfter,
 } from '../src/wait';
 import { TEST_GUN_OPTIONS } from '../src/const';
-import { IGunChainReference } from 'gun/types/chain';
+import { IGunChainReference } from '../src/gun/types/chain';
 import _ from 'lodash';
 import Gun from 'gun';
 import { v4 as uuidv4 } from 'uuid';

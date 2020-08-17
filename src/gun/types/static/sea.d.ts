@@ -1,3 +1,7 @@
+/**
+ * Source: "amark/gun"
+ */
+
 /** @see https://gun.eco/docs/SEA */
 export interface IGunStaticSEA {
     /** If you want SEA to throw while in development, turn SEA.throw = true on, but please do not use this in production. */
