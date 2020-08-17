@@ -1,3 +1,5 @@
+import * as GunTypes from './gun/types';
+export { GunTypes };
 export * from './Auth';
 export { default as Auth } from './Auth';
 export * from './const';
