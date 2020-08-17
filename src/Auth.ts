@@ -1,7 +1,7 @@
 import { IGunChainReference } from "./gun/types/chain";
 import { InvalidCredentials, GunError, AuthError, UserExists, TimeoutError, MultipleAuthError } from "./errors";
 import { IGunCryptoKeyPair } from "./gun/types/types";
-import { isGunAuthPairSupported, isPlatformWeb, isGunInstance } from "./support";
+import { isPlatformWeb, isGunInstance } from "./support";
 import { timeoutAfter, errorAfter, waitForData } from "./wait";
 
 const LOGIN_CHECK_DELAY = 500;
@@ -451,16 +451,11 @@ export default class Auth {
             };
 
             let user: any = this.gun.user();
-            let { alias, pass } = {
-                alias: '',
-                pass: '',
-                ...creds
-            };
+            let { alias = '', pass = '' } = creds;
             let gunOpts = existsTimeout && existsTimeout > 0 ? {
                 wait: existsTimeout
             } : undefined;
             if (alias && pass) {
-                // Supported with Gun v0.2020.520 and prior.
                 user.auth(
                     alias,
                     pass,
@@ -468,12 +463,9 @@ export default class Auth {
                     gunOpts,
                 );
             } else {
-                // Supported after Gun v0.2020.520.
-                if (!isGunAuthPairSupported(this.gun)) {
-                    throw new GunError('This version of Gun only supports auth with alias and pass');
-                }
                 user.auth(
                     creds,
+                    '',
                     cb,
                     gunOpts,
                 );

@@ -6,7 +6,6 @@ import { InvalidCredentials, UserExists, AuthError, TimeoutError } from '../src/
 import Gun from 'gun';
 import { v4 as uuidv4 } from 'uuid';
 import { IGunCryptoKeyPair } from '../src/gun/types/types';
-import { isGunAuthPairSupported } from '../src/support';
 
 let gun: IGunChainReference;
 let auth: Auth;
@@ -144,13 +143,9 @@ describe('Auth', () => {
             });
 
             it('should log in an existing user with pair', async () => {
-                if (isGunAuthPairSupported(gun)) {
-                    let user = await auth.login(pair);
-                    expect(user).toBeTruthy();
-                    expect(auth.pair()).toMatchObject(pair);
-                } else {
-                    console.warn('Gun.auth with pair is not supported');
-                }
+                let user = await auth.login(pair);
+                expect(user).toBeTruthy();
+                expect(auth.pair()).toMatchObject(pair);
             });
 
             it('should not log in an existing user with incorrect alias', async () => {
