@@ -39,14 +39,15 @@
     "moment": "^2.26.0"
   },
   "peerDependencies": {
-    "gun": ">=0.2020.520"
+    "gun": "0.2019.930 || >=0.2020.520"
   },
   "devDependencies": {
+    "@types/gun": "^0.9.2",
     "@types/jest": "^25.2.3",
     "@types/lodash": "^4.14.155",
     "@types/uuid": "^3.4.0",
     "bufferutil": "^4.0.1",
-    "gun": "git+https://github.com/amark/gun.git#5cbd5e394325a987c0ef50284e5bd99be66d21b3",
+    "gun": "^0.2019.930",
     "jest": "^26.0.1",
     "localenv": "^0.2.2",
     "lodash": "^4.17.19",

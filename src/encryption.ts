@@ -1,6 +1,6 @@
 import Gun from 'gun';
 import _ from 'lodash';
-import { IGunCryptoKeyPair } from 'gun/types/types';
+import { IGunCryptoKeyPair } from './gun/types/types';
 
 interface CryptOptionsBase {
     pair?: IGunCryptoKeyPair;

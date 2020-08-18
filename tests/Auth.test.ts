@@ -1,12 +1,10 @@
 import './testSetup';
 import Auth, { UserCredentials } from '../src/Auth';
-import { IGunChainReference } from 'gun/types/chain';
+import { IGunChainReference } from '../src/gun/types/chain';
 import { TEST_GUN_OPTIONS } from '../src/const';
 import { InvalidCredentials, UserExists, AuthError, TimeoutError } from '../src/errors';
-import Gun from 'gun';
 import { v4 as uuidv4 } from 'uuid';
-import { IGunCryptoKeyPair } from 'gun/types/types';
-import { isGunAuthPairSupported } from '../src/support';
+import { IGunCryptoKeyPair, Gun } from '../src/gun/types';
 
 let gun: IGunChainReference;
 let auth: Auth;
@@ -144,13 +142,9 @@ describe('Auth', () => {
             });
 
             it('should log in an existing user with pair', async () => {
-                if (isGunAuthPairSupported(gun)) {
-                    let user = await auth.login(pair);
-                    expect(user).toBeTruthy();
-                    expect(auth.pair()).toMatchObject(pair);
-                } else {
-                    console.warn('Gun.auth with pair is not supported');
-                }
+                let user = await auth.login(pair);
+                expect(user).toBeTruthy();
+                expect(auth.pair()).toMatchObject(pair);
             });
 
             it('should not log in an existing user with incorrect alias', async () => {
@@ -278,8 +272,8 @@ describe('Auth', () => {
                     expect(didCb).toBeTruthy();
                     done();
                 });
-                gun.user().auth(creds.alias, creds.pass, ack => {
-                    pub = (ack as any).sea.pub;
+                gun.user().auth(creds.alias, creds.pass, (ack: any) => {
+                    pub = ack.sea.pub;
                     expect(pub).toBeTruthy();
                 });
             });

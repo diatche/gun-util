@@ -4,6 +4,14 @@
 
 Changes on `develop` will be listed here.
 
+### Features
+
+- Added support for Gun v0.2019.930.
+
+### Breaking Changes
+
+- Removed `isGunAuthPairSupported()` as authenticating with a pair was in fact supported in Gun v0.2019.*.
+
 ## 0.0.12
 14 Aug 2020
 

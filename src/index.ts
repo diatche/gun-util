@@ -1,3 +1,4 @@
+export * from './gun/types';
 export * from './Auth';
 export { default as Auth } from './Auth';
 export * from './const';
