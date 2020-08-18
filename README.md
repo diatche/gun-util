@@ -20,7 +20,7 @@ Tested with various Gun versions from `0.2019.930` up to GitHub master commit [5
 
 ### Browser (UMD)
 
-Include dependencies and the UMD bundle in `dist/index.umd.js`. See an example [here](examples/subscription.html).
+Include dependencies and the UMD bundle `dist/index.umd.js`. See an example [here](examples/subscription.html).
 
 ## Documentation
 
