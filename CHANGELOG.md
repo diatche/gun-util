@@ -4,6 +4,9 @@
 
 Changes on `develop` will be listed here.
 
+## 0.0.12
+18 Aug 2020
+
 ### Features
 
 - Added support for Gun v0.2019.930.
