@@ -111,3 +111,6 @@ temp/
 # Gun
 radata/
 radata*
+
+# Private
+*.local

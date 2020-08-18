@@ -1,3 +1,4 @@
+import './testSetup';
 import { IGunChainReference } from "gun/types/chain";
 import { TEST_GUN_OPTIONS } from "../src/const";
 import { delay } from "../src/wait";

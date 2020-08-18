@@ -1,3 +1,4 @@
+import './testSetup';
 import {
     iterateRecord,
     iterateValues,

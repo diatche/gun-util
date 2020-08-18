@@ -1,3 +1,4 @@
+import './testSetup';
 import { encrypt, decrypt } from '../src/encryption';
 import { TEST_GUN_OPTIONS } from '../src/const';
 import { IGunChainReference } from 'gun/types/chain';

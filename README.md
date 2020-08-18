@@ -352,3 +352,13 @@ Have a look at the [examples folder](examples/).
   - Throw error after `ms` interval.
 - `timeoutAfter(promise, ms, error?)`
   - If the promise does not resolve (or error) within `ms` interval, throws a the specified `error`. If no error is specified, uses a `TimeoutError` instead.
+
+## Development
+
+For faster unit tests, create an `.env.local` file in the project directory and add a test gun peer:
+
+```sh
+GUN_PEERS="https://<your-id>.herokuapp.com/gun"
+```
+
+Alternatively, use `export GUN_PEERS="https://<your-id>.herokuapp.com/gun"` before running unit tests.
