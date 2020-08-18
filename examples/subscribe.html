@@ -1,0 +1,20 @@
+<script src="https://cdn.jsdelivr.net/npm/gun@0.2019.930/gun.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gun@0.2019.930/sea.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.26.0/moment.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lodash@4.17.15/lodash.min.js"></script>
+<script src="../dist/index.umd.js"></script><!-- Replace with CDN version in your own project: -->
+<!-- <script src="https://cdn.jsdelivr.net/npm/gun-util/dist/index.umd.js"></script> -->
+<script>
+    let gun = Gun();
+    let root = gun.get('test-' + new Date().toISOString()).get('root');
+    let sub = GunUtil.subscribe(root, (data, key) => {
+        console.log('key: ' + key + ', data: ' + JSON.stringify(data));
+    });
+    root.put('a');
+    root.put('b');
+    root.put('c');
+    // Console Output:
+    // key: root, data: "a"
+    // key: root, data: "b"
+    // key: root, data: "c"
+</script>

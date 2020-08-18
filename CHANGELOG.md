@@ -4,7 +4,18 @@
 
 Changes on `develop` will be listed here.
 
-## 0.0.12
+## 0.0.14
+18 Aug 2020
+
+### Bug Fixes
+
+- Fixed UMD module error: `Can't find variable: process`.
+
+### Breaking Changes
+
+- Renamed UMD module global variable from `'gun-util` to `GunUtil`.
+
+## 0.0.13
 18 Aug 2020
 
 ### Features
