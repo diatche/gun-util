@@ -3,8 +3,7 @@ import {
     subscribe,
 } from '../src/subscription';
 import { TEST_GUN_OPTIONS } from '../src/const';
-import { IGunChainReference } from '../src/gun/types/chain';
-import Gun from 'gun';
+import { IGunChainReference, Gun } from '../src/gun/types';
 import { v4 as uuidv4 } from 'uuid';
 
 let gun: IGunChainReference;

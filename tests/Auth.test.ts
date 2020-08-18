@@ -3,9 +3,8 @@ import Auth, { UserCredentials } from '../src/Auth';
 import { IGunChainReference } from '../src/gun/types/chain';
 import { TEST_GUN_OPTIONS } from '../src/const';
 import { InvalidCredentials, UserExists, AuthError, TimeoutError } from '../src/errors';
-import Gun from 'gun';
 import { v4 as uuidv4 } from 'uuid';
-import { IGunCryptoKeyPair } from '../src/gun/types/types';
+import { IGunCryptoKeyPair, Gun } from '../src/gun/types';
 
 let gun: IGunChainReference;
 let auth: Auth;

@@ -1,8 +1,7 @@
 import './testSetup';
-import { IGunChainReference } from '../src/gun/types/chain';
+import { IGunChainReference, Gun } from '../src/gun/types';
 import { TEST_GUN_OPTIONS } from '../src/const';
 import { delay } from '../src/wait';
-import Gun from 'gun';
 import DateTree, { DateComponents } from '../src/DateTree';
 import moment from 'moment';
 import _ from 'lodash';
