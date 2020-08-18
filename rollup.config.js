@@ -40,7 +40,6 @@ export default {
             tsconfigOverride: {
                 compilerOptions: {
                     module: 'ESNext',
-                    target: 'es5',
                 }
             }
         }),
