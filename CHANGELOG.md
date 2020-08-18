@@ -4,7 +4,7 @@
 
 Changes on `develop` will be listed here.
 
-## 0.0.14
+## 0.0.14 - 0.0.15
 18 Aug 2020
 
 ### Bug Fixes
@@ -13,7 +13,7 @@ Changes on `develop` will be listed here.
 
 ### Breaking Changes
 
-- Renamed UMD module global variable from `'gun-util` to `GunUtil`.
+- Renamed UMD module global variable from `global['gun-util']` to `GunUtil`.
 
 ## 0.0.13
 18 Aug 2020
