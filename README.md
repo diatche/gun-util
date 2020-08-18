@@ -10,11 +10,17 @@ Tested with various Gun versions from `0.2019.930` up to GitHub master commit [5
 
 ## Installation
 
+### Node (CommonJS) and React (Native) (ESM)
+
 - Install using yarn with `yarn add gun-util` or npm `npm install gun-util`.
 - Install `gun` as a peer dependency. Supported versions:
    - `0.2019.930`.
    - `>0.2020.520`.
    - GitHub master commit [7c45ddb](https://github.com/amark/gun/commit/7c45ddb558a492e53df2832bf2e4ee873f772176) or later.
+
+### Browser (UMD)
+
+Include dependencies and the UMD bundle in `dist/index.umd.js`. See an example [here](examples/subscription.html).
 
 ## Documentation
 
