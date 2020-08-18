@@ -1,12 +1,12 @@
+import './testSetup';
 import {
     waitForData,
     delay,
     errorAfter,
 } from '../src/wait';
 import { TEST_GUN_OPTIONS } from '../src/const';
-import { IGunChainReference } from 'gun/types/chain';
+import { IGunChainReference, Gun } from '../src/gun/types';
 import _ from 'lodash';
-import Gun from 'gun';
 import { v4 as uuidv4 } from 'uuid';
 import moment from 'moment';
 
