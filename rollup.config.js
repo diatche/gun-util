@@ -1,7 +1,7 @@
 import typescript from 'rollup-plugin-typescript2';
 import pkg from './package.json';
 
-let outputDefaults = {
+const outputDefaults = {
     globals: {
         'gun/gun': 'Gun',
         'gun/sea': 'SEA',
@@ -23,7 +23,7 @@ export default {
         },
         {
             ...outputDefaults,
-            name: 'gun-util',
+            name: 'GunUtil',
             file: pkg.browser,
             format: 'umd',
         },
@@ -39,7 +39,8 @@ export default {
             typescript: require('typescript'),
             tsconfigOverride: {
                 compilerOptions: {
-                    module: 'ESNext'
+                    module: 'ESNext',
+                    target: 'es5',
                 }
             }
         }),
