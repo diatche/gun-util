@@ -370,7 +370,7 @@ Have a look at the [examples folder](examples/).
 For faster unit tests, create an `.env.local` file in the project directory and add a test gun peer:
 
 ```sh
-GUN_PEERS="https://<your-id>.herokuapp.com/gun"
+TEST_GUN_PEERS="https://<your-id>.herokuapp.com/gun"
 ```
 
-Alternatively, use `export GUN_PEERS="https://<your-id>.herokuapp.com/gun"` before running unit tests.
+Alternatively, use `export TEST_GUN_PEERS="https://<your-id>.herokuapp.com/gun"` before running unit tests.

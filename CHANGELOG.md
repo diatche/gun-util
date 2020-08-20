@@ -4,6 +4,10 @@
 
 Changes on `develop` will be listed here.
 
+### Breaking Changes
+
+- Renamed enviroment variable `GUN_PEERS` to `TEST_GUN_PEERS`.
+
 ## 0.0.14 - 0.0.15
 18 Aug 2020
 
@@ -13,7 +17,7 @@ Changes on `develop` will be listed here.
 
 ### Breaking Changes
 
-- Renamed UMD module global variable from `global['gun-util']` to `GunUtil`.
+- Renamed UMD module global variable `global['gun-util']` to `GunUtil`.
 
 ## 0.0.13
 18 Aug 2020

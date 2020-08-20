@@ -28,7 +28,7 @@ jobs:
     - run: yarn build
     - name: Run unit tests and generate coverage report
       env:
-        GUN_PEERS: ${{ secrets.GUN_PEERS }}
+        TEST_GUN_PEERS: ${{ secrets.TEST_GUN_PEERS }}
       run: yarn run coverage
     - name: Archive code coverage results
       uses: actions/upload-artifact@v1
