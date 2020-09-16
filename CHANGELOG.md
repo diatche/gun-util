@@ -4,6 +4,10 @@
 
 Changes on `develop` will be listed here.
 
+### Features
+
+- Listening to authentication using `Auth` does not affect the previous `gun.on('auth')` listener.
+
 ### Breaking Changes
 
 - Renamed enviroment variable `GUN_PEERS` to `TEST_GUN_PEERS`.
