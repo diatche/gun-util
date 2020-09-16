@@ -321,7 +321,7 @@ Have a look at the [examples folder](examples/).
 
 #### Notes
 
-- It's been observed that multiple `gun.on('auth', cb)` do not work. If you use your own `gun.on('auth', cb)` listener, call `Auth#did()` inside of it. Or use `Auth#on()` instead.
+- If you use your own `gun.on('auth', cb)` listener, call `this.to.next(...args)` inside of it to allow other listeners to receive a callback. Note that you will need to use the classic **function** declaration instead of an **arrow function** for correct `this` binding. You may also need prepend it with `// @ts-ignore: ` if using TypeScript.
 - It's been observed that when `Auth#exists()`, `Auth#getPub()` or `gun.get('~@' + alias)` is used, `gun.user().auth()` stops working and fails immediately with an invalid credentials error.
   - `Auth#login()` uses `gun.user().auth()` with `{ wait: <timeout> }` instead.
   - Avoid using `Auth#exists()`, `Auth#getPub()` and `gun.get('~@' + alias)` before logging in if this is an issue with your Gun version.
