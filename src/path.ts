@@ -6,21 +6,14 @@ export const getGunKey = (ref: any): string => {
 
 export const getGunPath = (
     ref: any,
-    options?: {
-        relativeTo: any,
-    }
 ): string[] => {
     let currentRef: any = ref;
     let keys: string[] = [];
     let ok = true;
-    const relativeKey = options?.relativeTo
-        ? getGunKey(options.relativeTo)
-        : undefined;
-    while (currentRef && keys.length < units.length) {
+    while (currentRef) {
         let key = getGunKey(currentRef);
-        if (!key || key === relativeKey) {
-            ok = false;
-            break;
+        if (!key) {
+            throw new Error('Invalid Gun node reference');
         }
         keys.unshift(key);
         if (typeof currentRef.back === 'function') {
@@ -37,13 +30,5 @@ export const getGunPath = (
             break;
         }
     }
-    if (getGunKey(currentRef) !== relativeKey) {
-        ok = false;
-    }
-    if (!ok) {
-        throw new Error('Invalid Gun node reference. Expected a leaf on the date tree.');
-    }
-    let values = keys.map(k => DateTree.decodeDateComponent(k));
-    let comps: DateComponentsUnsafe = _.zipObject(units, values);
-    return DateTree.getDateWithComponents(comps);
+    return keys;
 }
