@@ -106,6 +106,7 @@ typings/
 temp/
 src/
 tests/
+examples/
 tsconfig.json
 package-lock.json
 .vscode/
