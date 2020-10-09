@@ -305,6 +305,21 @@ export default class Auth {
      * 
      * Why? It's been observed that multiple `gun.on('auth', cb)`
      * listeners don't work.
+     * 
+     * @deprecated Use Gun's callback chaining instead.
+     * 
+     * For example:
+     * 
+     * ```
+     * let gun = new Gun();
+     * gun.on('auth', function (..args) {
+     *     // Do work
+     *     // ...
+     *     // Allow other on('auth') listeners to receive a callback:
+     *     // @ts-ignore: Ignore TypeScript scope shadowing error
+     *     this.to.next(...args);
+     * });
+     * ``` 
      */
     did() {
         this._endOnAuth();
@@ -647,8 +662,12 @@ export default class Auth {
         // registered to gun.on('auth')
         if (this._subscribedToAuth) return;
         this._subscribedToAuth = true;
-        (this.gun as any).on('auth', () => {
-            this._endOnAuth();
+        let innerCallback = () => this._endOnAuth();
+        (this.gun as any).on('auth', function (...args: any[]) {
+            innerCallback();
+            // Allow other on('auth') listeners to receive a callback:
+            // @ts-ignore: Ignore TypeScript scope shadowing error
+            this.to.next(...args);
         });
     }
 

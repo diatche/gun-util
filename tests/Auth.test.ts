@@ -185,6 +185,29 @@ describe('Auth', () => {
                 }
                 expect(caughtError).toBeInstanceOf(TimeoutError);
             });
+
+            it('should not interfere with other listeners', async () => {
+                // Check listeners subscribed before login
+                let didCb1 = false;
+                gun.on('auth', function (...args: any[]) {
+                    didCb1 = true;
+                    // @ts-ignore: Ignore TypeScript scope shadowing error
+                    this.to.next(...args);
+                });
+                await auth.login(creds);
+                expect(didCb1).toBeTruthy();
+
+                // Check listeners subscribed after login
+                auth.logout();
+                let didCb2 = false;
+                gun.on('auth', function (...args: any[]) {
+                    didCb2 = true;
+                    // @ts-ignore: Ignore TypeScript scope shadowing error
+                    this.to.next(...args);
+                });
+                await auth.login(creds);
+                expect(didCb2).toBeTruthy();
+            });
         });
 
         describe('on', () => {

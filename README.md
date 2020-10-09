@@ -20,7 +20,7 @@ Tested with various Gun versions from `0.2019.930` up to GitHub master commit [5
 
 ### Browser (UMD)
 
-Include dependencies and the UMD bundle in `dist/index.umd.js`. See an example [here](examples/subscription.html).
+Include dependencies and the UMD bundle `dist/index.umd.js`. See an example [here](examples/subscription.html).
 
 ## Documentation
 
@@ -321,7 +321,7 @@ Have a look at the [examples folder](examples/).
 
 #### Notes
 
-- It's been observed that multiple `gun.on('auth', cb)` do not work. If you use your own `gun.on('auth', cb)` listener, call `Auth#did()` inside of it. Or use `Auth#on()` instead.
+- If you use your own `gun.on('auth', cb)` listener, call `this.to.next(...args)` inside of it to allow other listeners to receive a callback. Note that you will need to use the classic **function** declaration instead of an **arrow function** for correct `this` binding. You may also need prepend it with `// @ts-ignore: ` if using TypeScript.
 - It's been observed that when `Auth#exists()`, `Auth#getPub()` or `gun.get('~@' + alias)` is used, `gun.user().auth()` stops working and fails immediately with an invalid credentials error.
   - `Auth#login()` uses `gun.user().auth()` with `{ wait: <timeout> }` instead.
   - Avoid using `Auth#exists()`, `Auth#getPub()` and `gun.get('~@' + alias)` before logging in if this is an issue with your Gun version.
@@ -370,7 +370,7 @@ Have a look at the [examples folder](examples/).
 For faster unit tests, create an `.env.local` file in the project directory and add a test gun peer:
 
 ```sh
-GUN_PEERS="https://<your-id>.herokuapp.com/gun"
+TEST_GUN_PEERS="https://<your-id>.herokuapp.com/gun"
 ```
 
-Alternatively, use `export GUN_PEERS="https://<your-id>.herokuapp.com/gun"` before running unit tests.
+Alternatively, use `export TEST_GUN_PEERS="https://<your-id>.herokuapp.com/gun"` before running unit tests.
