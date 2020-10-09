@@ -4,6 +4,9 @@
 
 Changes on `develop` will be listed here.
 
+## 0.0.16
+10 Oct 2020
+
 ### Features
 
 - Listening to authentication using `Auth` does not affect the previous `gun.on('auth')` listener.
