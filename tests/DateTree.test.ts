@@ -212,7 +212,7 @@ describe('DateTree #', () => {
                 });
             });
 
-            it('should not callback after off', async (done) => {
+            it('should not callback after off', async () => {
                 expect.assertions(1);
                 let dateFormat = 'YYYY-MM-DD';
 
@@ -226,6 +226,11 @@ describe('DateTree #', () => {
                 });
 
                 let allCbTable: any = {};
+                let done: () => void;
+                let promise = new Promise<void>((resolve, reject) => {
+                    done = resolve;
+                })
+
                 tree.on((data, date) => {
                     let key = date.utc().format(dateFormat);
                     allCbTable[key] = data;
@@ -242,9 +247,11 @@ describe('DateTree #', () => {
                 tree.get(moment.utc('2020-01-06')).put('bar');
                 await delay(100);
                 tree.get(moment.utc('2020-01-10')).put('gaz');
+
+                await promise;
             }, 40000);
 
-            it.skip('should callback with updates', async (done) => {
+            it.skip('should callback with updates', async () => {
                 // TODO: enable when support added
                 expect.assertions(2);
                 let promises: any = [];
@@ -252,6 +259,11 @@ describe('DateTree #', () => {
                 promises.push(tree.get(moment.utc('2020-01-06')).put('bar').then!());
                 await Promise.all(promises);
                 await delay(1000);
+
+                let done: () => void;
+                let promise = new Promise<void>((resolve, reject) => {
+                    done = resolve;
+                })
 
                 let dateFormat = 'YYYY-MM-DD';
                 tree.on((data, date) => {
@@ -262,6 +274,8 @@ describe('DateTree #', () => {
                 }, { updates: true } as any);
 
                 tree.get(moment.utc('2020-01-10')).put('gaz');
+
+                await promise;
             });
         });
 
@@ -292,9 +306,14 @@ describe('DateTree #', () => {
                 }, { gte: moment.utc('2020-01-03') });
             });
 
-            it('should not callback after off', async (done) => {
+            it('should not callback after off', async () => {
                 expect.assertions(1);
                 let dateFormat = 'YYYY-MM-DD';
+
+                let done: () => void;
+                let promise = new Promise<void>((resolve, reject) => {
+                    done = resolve;
+                })
 
                 let cbTable: any = {};
                 tree.on((data, date, at, sub) => {
@@ -322,6 +341,8 @@ describe('DateTree #', () => {
                 tree.get(moment.utc('2020-01-06')).put('bar');
                 await delay(100);
                 tree.get(moment.utc('2020-01-10')).put('gaz');
+
+                await promise;
             }, 40000);
 
             it('should callback with data in open set', done => {
@@ -426,9 +447,15 @@ describe('DateTree #', () => {
                 }, { gte: moment.utc('2020-02-04'), lte: moment.utc('2020-02-09') });
             });
 
-            it.skip('should callback with updates', async (done) => {
+            it.skip('should callback with updates', async () => {
                 // TODO: enable when support added
                 expect.assertions(2);
+
+                let done: () => void;
+                let promise = new Promise<void>((resolve, reject) => {
+                    done = resolve;
+                })
+
                 let promises: any = [];
                 promises.push(tree.get(moment.utc('2020-01-03')).put('foo').then!());
                 promises.push(tree.get(moment.utc('2020-01-06')).put('bar').then!());
@@ -443,6 +470,8 @@ describe('DateTree #', () => {
                 }, { gte: moment.utc('2020-01-03'), updates: true } as any);
 
                 tree.get(moment.utc('2020-01-10')).put('gaz');
+
+                await promise;
             });
         });
     });
@@ -480,8 +509,14 @@ describe('DateTree #', () => {
             ]);
         });
 
-        it.skip('should not callback after unsubscribe', async (done) => {
+        it.skip('should not callback after unsubscribe', async () => {
             // TOOD: For some reason, this fails on dev machine, but passes in CI.
+
+            let done: () => void;
+            let promise = new Promise<void>((resolve, reject) => {
+                done = resolve;
+            })
+
             let keys = new Set<string>();
             let sub = tree.changesAbout('2020-01-04', comps => {
                 let key = DateTree.dateComponentsToString(comps);
@@ -512,6 +547,8 @@ describe('DateTree #', () => {
             });
 
             tree.get(queue.shift()!).put('a');
+
+            await promise;
         }, 40000);
     });
 
