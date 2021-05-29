@@ -4,6 +4,9 @@
 
 Changes on `master` will be listed here.
 
+## 0.0.17
+30 May 2021
+
 ### Other Changes
 
 - Updated dependencies.
