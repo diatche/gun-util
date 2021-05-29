@@ -65,7 +65,7 @@ export async function waitForData<T = any>(
 export function delay<T = any>(ms: number, passthrough?: T): Promise<T> {
     let timer: any;
     return new Promise<T>((resolve, reject) => {
-        timer = setTimeout(() => resolve(passthrough), ms);
+        timer = setTimeout(() => resolve(passthrough as T), ms);
     }).finally(() => {
         timer && clearTimeout(timer);
     });

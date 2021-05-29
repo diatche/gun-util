@@ -1,8 +1,12 @@
 # Change Log
 
-## develop
+## master
 
-Changes on `develop` will be listed here.
+Changes on `master` will be listed here.
+
+### Other Changes
+
+- Updated dependencies.
 
 ## 0.0.16
 10 Oct 2020
