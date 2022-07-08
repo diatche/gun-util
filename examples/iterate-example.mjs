@@ -1,5 +1,5 @@
 import Gun from 'gun';
-import { iterateItems } from '../dist/index.mjs'; /* Replace with 'gun-util' in your own project. */
+import { iterateItems } from '../dist/index.mjs'; /* Replace with 'gun-util' in your own project or run `yarn build` first. */
 
 let gun = Gun();
 let list = gun.get('test-list');
@@ -9,9 +9,9 @@ list.put({ b: 'bar' });
 list.put({ c: 'gun' });
 
 (async () => {
-    for await (let [key, value] of iterateItems(list)) {
-        console.log(key + ': ' + value);
-    }
+  for await (let [key, value] of iterateItems(list)) {
+    console.log(key + ': ' + value);
+  }
 })().then(() => process.exit(0));
 
 // Output:

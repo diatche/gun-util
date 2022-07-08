@@ -1,19 +1,19 @@
 const Gun = require('gun');
 const {
-    encrypt,
-    decrypt,
-} = require('../dist'); /* Replace with 'gun-util' in your own project. */
+  encrypt,
+  decrypt,
+} = require('../dist'); /* Replace with 'gun-util' in your own project or run `yarn build` first. */
 
 (async () => {
-    // You can use SEA pair or you can
-    // get it from the user as well.
-    let pair = await Gun.SEA.pair();
-    
-    let enc = await encrypt('a@a.com', { pair });
-    console.log('enc: ' + enc);
-    
-    let dec = await decrypt(enc, { pair });
-    console.log('dec: ' + dec);
+  // You can use SEA pair or you can
+  // get it from the user as well.
+  let pair = await Gun.SEA.pair();
+
+  let enc = await encrypt('a@a.com', { pair });
+  console.log('enc: ' + enc);
+
+  let dec = await decrypt(enc, { pair });
+  console.log('dec: ' + dec);
 })().then(() => process.exit(0));
 
 // Output:
