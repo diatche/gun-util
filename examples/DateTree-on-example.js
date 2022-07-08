@@ -1,5 +1,7 @@
 const Gun = require('gun');
-const { DateTree } = require('../dist'); /* Replace with 'gun-util' in your own project. */
+const {
+  DateTree,
+} = require('../dist'); /* Replace with 'gun-util' in your own project or run `yarn build` first. */
 const moment = require('moment');
 
 let gun = Gun();
@@ -8,9 +10,12 @@ let tree = new DateTree(treeRoot, 'millisecond');
 let now = moment();
 
 // Subscribe to tree data with a filter
-tree.on((data, date) => {
+tree.on(
+  (data, date) => {
     console.log(`${date.toISOString()}: ${JSON.stringify(data)}`);
-}, { gte: '2009-02-01' });
+  },
+  { gte: '2009-02-01' }
+);
 
 // Modify tree data
 tree.get('1995-10-04T10:23:54.345Z').put('distant past');
