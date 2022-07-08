@@ -4,6 +4,10 @@
 
 Changes on `master` will be listed here.
 
+## 0.0.18
+
+9 Jul 2022
+
 ### Bug Fixes
 
 - [[#34](https://github.com/diatche/gun-util/pull/34)] `auth.cb` now correctly passes the public key in the callback.
