@@ -24,18 +24,16 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
-        # install
       - run: yarn
-        # build
       - run: yarn build
 
+      - name: Start local gun server in background
+        run: yarn gun &
+
       - name: Run unit tests and generate coverage report
-        # start local gun server
-      - run: yarn gun &
-        # test
-      - run: yarn run coverage
-        # stop local gun server
-      - run: kill %1
+        env:
+          TEST_GUN_PEERS: http://localhost:8765/gun
+        run: yarn run coverage
 
       - name: Archive code coverage results
         uses: actions/upload-artifact@v1
