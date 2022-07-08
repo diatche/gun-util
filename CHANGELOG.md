@@ -4,7 +4,12 @@
 
 Changes on `master` will be listed here.
 
+### Bug Fixes
+
+- [[#34](https://github.com/diatche/gun-util/pull/34)] `auth.cb` now correctly passes the public key in the callback.
+
 ## 0.0.17
+
 30 May 2021
 
 ### Other Changes
@@ -12,6 +17,7 @@ Changes on `master` will be listed here.
 - Updated dependencies.
 
 ## 0.0.16
+
 10 Oct 2020
 
 ### Features
@@ -23,6 +29,7 @@ Changes on `master` will be listed here.
 - Renamed enviroment variable `GUN_PEERS` to `TEST_GUN_PEERS`.
 
 ## 0.0.14 - 0.0.15
+
 18 Aug 2020
 
 ### Bug Fixes
@@ -34,6 +41,7 @@ Changes on `master` will be listed here.
 - Renamed UMD module global variable `global['gun-util']` to `GunUtil`.
 
 ## 0.0.13
+
 18 Aug 2020
 
 ### Features
@@ -42,9 +50,10 @@ Changes on `master` will be listed here.
 
 ### Breaking Changes
 
-- Removed `isGunAuthPairSupported()` as authenticating with a pair was in fact supported in Gun v0.2019.*.
+- Removed `isGunAuthPairSupported()` as authenticating with a pair was in fact supported in Gun v0.2019.\*.
 
 ## 0.0.12
+
 14 Aug 2020
 
 ### Features
@@ -58,8 +67,8 @@ Changes on `master` will be listed here.
 ### Breaking Changes
 
 - Renamed types:
-   - `Subscription` to `IGunSubscription`.
-   - `ExpandedCallback` to `GunSubscriptionCallback`.
+  - `Subscription` to `IGunSubscription`.
+  - `ExpandedCallback` to `GunSubscriptionCallback`.
 
 ## 0.0.11
 
@@ -113,7 +122,7 @@ Changes on `master` will be listed here.
 ### Features
 
 - Added `DateTree#on()` method, which allows subscribing to all or a subset of
-the tree's data.
+  the tree's data.
 - Filter methods support any value which has a `valueOf()` method.
 - `DateTree#getDate()` can now be used with a reference from a callback.
 - Added `DateTree#largestCommonUnit()`.
@@ -135,10 +144,10 @@ the tree's data.
 ### Breaking Changes
 
 - The stateless `GunUser` has been replaced with a stateful `Auth`. The methods are almost
-identical, with the exception of `GunUser.current()`, which is now `Auth#user()`.
+  identical, with the exception of `GunUser.current()`, which is now `Auth#user()`.
 - `IterateOptions` no longer uses `start`, `end`, `startInclusive`, `endInclusive`. Instead
-`gt`, `gte`, `lt`, `lte` is used. These can be converted to a `Range`, which resemble the previous
-structure (which is still used internally) using `rangeWithFilter()`.
+  `gt`, `gte`, `lt`, `lte` is used. These can be converted to a `Range`, which resemble the previous
+  structure (which is still used internally) using `rangeWithFilter()`.
 - Removed redundant `DateTree#put()`. Use `DateTree#get().put()` instead.
 - `DateTree#changesAbout()` returns an object instead of the `off()` function directly.
 
