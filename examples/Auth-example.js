@@ -5,7 +5,7 @@ const { Auth } = require('../dist'); /* Replace with 'gun-util' in your own proj
 let gun = Gun();
 let auth = Auth.default(gun);
 
-auth.on(gun).then(pub => {
+auth.on(pub => {
     console.log('Detected login: ' + pub);
 });
 
