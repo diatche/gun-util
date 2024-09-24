@@ -50,7 +50,7 @@
     "jest": "^27.0.3",
     "localenv": "^0.2.2",
     "lodash": "^4.17.21",
-    "rollup": "^2.50.4",
+    "rollup": "^3.29.5",
     "rollup-plugin-typescript2": "^0.30.0",
     "text-encoding": "^0.7.0",
     "ts-jest": "^27.0.1",
